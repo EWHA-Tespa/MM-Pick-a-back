@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 from torch.nn.parameter import Parameter
+from torch import nn, einsum
+from einops import rearrange, repeat
 import pdb
 from pprint import pprint
 
@@ -216,3 +218,75 @@ class SharableLinear(nn.Module):
 
         self.weight.data = fn(self.weight.data)
         self.bias.data = fn(self.bias.data)
+
+class SharableMultiheadAttention(nn.Module):
+    def __init__(self, embed_dim, num_heads, dropout=0.1,
+                 mask_init='1s', mask_scale=1e-2, 
+                 threshold_fn='binarizer', threshold=None):
+        super(SharableMultiheadAttention, self).__init__()
+        assert embed_dim % num_heads == 0, "Embedding dimension must be divisible by number of heads"
+        
+        self.embed_dim = embed_dim
+        self.num_heads = num_heads
+        self.head_dim = embed_dim // num_heads  # 각 head의 차원
+        self.threshold_fn = threshold_fn
+        self.mask_scale = mask_scale
+        self.mask_init = mask_init
+
+        self.q_proj = SharableLinear(embed_dim, embed_dim, bias=False, mask_init=mask_init,
+                                     mask_scale=mask_scale, threshold_fn=threshold_fn, threshold=threshold)
+        self.k_proj = SharableLinear(embed_dim, embed_dim, bias=False, mask_init=mask_init,
+                                     mask_scale=mask_scale, threshold_fn=threshold_fn, threshold=threshold)
+        self.v_proj = SharableLinear(embed_dim, embed_dim, bias=False, mask_init=mask_init,
+                                     mask_scale=mask_scale, threshold_fn=threshold_fn, threshold=threshold)
+        self.out_proj = SharableLinear(embed_dim, embed_dim, bias=True, mask_init=mask_init,
+                                     mask_scale=mask_scale, threshold_fn=threshold_fn, threshold=threshold)
+        self.Dropout = nn.Dropout(dropout)
+        self.scale = self.head_dim ** -0.5  # Scaling factor for dot-product
+
+        # Query, Key, Value projection layers
+        # self.q_proj = nn.Linear(embed_dim, embed_dim, bias=False)
+        # self.k_proj = nn.Linear(embed_dim, embed_dim, bias=False)
+        # self.v_proj = nn.Linear(embed_dim, embed_dim, bias=False)
+        # self.out_proj = nn.Linear(embed_dim, embed_dim)  # 최종 출력 프로젝션
+
+        # self.dropout = nn.Dropout(dropout)
+        # self.scale = self.head_dim ** -0.5  # Scaling factor for dot-product
+
+    def forward(self, query, key, value, mask=None):
+        """
+        query, key, value: (seq_len, batch_size, embed_dim)
+        mask: (batch_size, seq_len, seq_len), optional
+        """
+        B, N, D = query.shape  # (seq_len, batch_size, embed_dim)
+        H = self.num_heads
+        head_dim = self.head_dim
+
+        # 1. Query, Key, Value를 각각 Projection
+        q = self.q_proj(query)  # (N, B, D)
+        k = self.k_proj(key)
+        v = self.v_proj(value)
+
+        # 2. Multi-head 차원 변환: (batch, num_heads, seq_len, head_dim)
+        q = rearrange(q, "n b (h d) -> b h n d", h=H)  # (B, H, N, head_dim)
+        k = rearrange(k, "n b (h d) -> b h n d", h=H)
+        v = rearrange(v, "n b (h d) -> b h n d", h=H)
+
+        # 3. Scaled Dot-Product Attention 수행
+        attn_scores = einsum("b h i d, b h j d -> b h i j", q, k) * self.scale  # (B, H, N, N)
+
+        # 4. Masking 처리 (선택적)
+        if mask is not None:
+            attn_scores = attn_scores.masked_fill(mask == 0, float('-inf'))
+
+        attn_weights = F.softmax(attn_scores, dim=-1)  # (B, H, N, N)
+        attn_weights = self.Dropout(attn_weights)
+
+        # 5. Attention 적용 후 값 추출
+        attn_output = einsum("b h i j, b h j d -> b h i d", attn_weights, v)  # (B, H, N, head_dim)
+
+        # 6. 원래 차원으로 되돌리기
+        attn_output = rearrange(attn_output, "b h n d -> n b (h d)")  # (N, B, D)
+
+        # 7. 최종 Linear Projection 후 반환
+        return self.out_proj(attn_output), attn_weights
