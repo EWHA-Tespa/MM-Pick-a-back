@@ -275,3 +275,36 @@ class Perceiver(nn.Module):
         # to logits
 
         return self.to_logits(x)
+    
+    def _reconstruct_classifiers(self):
+        for dataset, num_classes in self.dataset2num_classes.items():
+            self.classifiers.append(nn.Linear(int, self.shared_layer_info[dataset]['network_width_multiplier'] * 2048) ,num_classes) # 모델 expand 할 필요 있을 때, Linear 추가함.
+    
+    def add_dataset(self, dataset, num_classes):
+        if dataset not in self.datasets:
+            self.datasets.append(dataset)
+            self.dataset2num_classes[dataset] = num_classes
+            self.classifiers.append(nn.Linear(int(2048 * self.network_width_multiplier), num_classes))
+            nn.init.normal_(self.classifiers[self.datasets.index(dataset)].weight, 0, 0.01)
+            nn.init.constant_(self.classifiers[self.datasets.index(dataset)].bias, 0)
+    
+    def set_dataset(self, dataset):
+        assert dataset in self.datasets
+        self.classifiers = self.classifiers[self.datasets.index(dataset)]
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nl.SharableLinear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nl.SharableAttention):
+                for param in m.parameters():
+                    if param.dim() > 1:
+                        nn.init.xavier_uniform_(param)
+                    else:
+                        nn.init.constant_(param, 0)
+            elif isinstance(m, nl.SharableFeedForward):
+                for param in m.parameters:
+                    if m.bias is not None:
+                        nn.init.constant_(param, 0)
