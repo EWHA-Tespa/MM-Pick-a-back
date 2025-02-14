@@ -10,6 +10,10 @@ import models.layers as nl
 from einops import rearrange, repeat
 from einops.layers.torch import Reduce
 
+__all__ = [
+    'perceiver'
+]
+
 # helpers
 
 def exists(val):
@@ -128,6 +132,11 @@ class Perceiver(nn.Module):
         num_freq_bands,
         depth,
         max_freq,
+        dataset_history,
+        dataset2num_classes,
+        network_width_multiplier,
+        shared_layer_info = {},
+        init_weights = True,
         input_channels = 3,
         input_axis = 2,
         num_latents = 512,
@@ -230,6 +239,18 @@ class Perceiver(nn.Module):
             nn.LayerNorm(latent_dim),
             nl.SharableLinear(latent_dim, num_classes) if mode == 'Shared' else nn.Linear(latent_dim, num_classes),
         ) if final_classifier_head else nn.Identity()
+
+        self.network_width_multiplier = network_width_multiplier
+        self.shared_layer_info = shared_layer_info
+
+        self.datasets, self.classifiers = dataset_history, nn.ModuleList()
+        self.dataset2num_classes = dataset2num_classes
+
+        if self.datasets:
+            self._reconstruct_classifiers()
+        
+        if init_weights:
+            self._initialize_weights()
 
     def forward(
         self,

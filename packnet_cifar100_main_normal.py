@@ -173,6 +173,8 @@ def main():
         model = packnet_models.__dict__[args.arch]([], dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
     elif args.arch == 'resnet50':
         model = packnet_models.__dict__[args.arch](dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
+    elif args.arch == 'perceiver':
+        model = packnet_models.__dict__[args.arch](dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
     else:
         print('Error!')
         sys.exit(0)
