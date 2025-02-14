@@ -16,7 +16,7 @@ def train_loader(dataset_name, train_batch_size, num_workers=4, pin_memory=True,
         normalize,
     ])
 
-    train_dataset = datasets.ImageFolder('data/cifar100_org/train/{}'.format(dataset_name),
+    train_dataset = datasets.ImageFolder('data_library/cifar100/train/{}'.format(dataset_name),
             train_transform)
 
     return torch.utils.data.DataLoader(train_dataset,
@@ -30,7 +30,7 @@ def val_loader(dataset_name, val_batch_size, num_workers=4, pin_memory=True, nor
             mean=mean[dataset_name], std=std[dataset_name])
 
     val_dataset = \
-        datasets.ImageFolder('data/cifar100_org/test/{}'.format(
+        datasets.ImageFolder('data_library/cifar100/test/{}'.format(
                 dataset_name),
                 transforms.Compose([
                     transforms.ToTensor(),
