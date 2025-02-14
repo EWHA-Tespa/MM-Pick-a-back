@@ -54,28 +54,28 @@ def set_dataset_paths(train_path, val_path, dataset):
     """Set default train and test path if not provided as input."""
 
     if not train_path:
-        train_path = 'data/%s/train' % (dataset)
+        train_path = 'data_library/%s/train' % (dataset)
 
     if not val_path:
         if (dataset in ['imagenet', 'face_verification', 'emotion', 'gender'] or
             dataset[:3] == 'age'):
-            val_path = 'data/%s/val' % (dataset)
+            val_path = 'data_library/%s/val' % (dataset)
         else:
-            val_path = 'data/%s/test' % (dataset)
+            val_path = 'data_library/%s/test' % (dataset)
 
 
 def set_dataset_paths_1param(args):
     """Set default train and test path if not provided as input."""
 
     if not args.train_path:
-        args.train_path = 'data/cifar100_org/train/%s' % (args.dataset)
+        args.train_path = 'data_library/cifar100/train/%s' % (args.dataset)
 
     if not args.val_path:
         if (args.dataset in ['imagenet', 'face_verification', 'emotion', 'gender'] or
             args.dataset[:3] == 'age'):
-            args.val_path = 'data/cifar100_org/val/%s' % (args.dataset)
+            args.val_path = 'data_library/cifar100/val/%s' % (args.dataset)
         else:
-            args.val_path = 'data/cifar100_org/tests/%s' % (args.dataset)
+            args.val_path = 'data_library/cifar100/tests/%s' % (args.dataset)
 
 
 def set_logger(filepath):
