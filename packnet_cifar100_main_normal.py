@@ -174,11 +174,26 @@ def main():
     elif args.arch == 'resnet50':
         model = packnet_models.__dict__[args.arch](dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
     elif args.arch == 'perceiver':
-        model = packnet_models.__dict__[args.arch](num_freq_bands=6,
-                                                   depth=4,
-                                                   max_freq=10,
-                                                   dataset_history=dataset_history,
-                                                   dataset2num_classes=dataset2num_classes)
+        model = packnet_models.__dict__[args.arch](
+                                    input_channels=3,
+                                    input_axis=2,
+                                    num_freq_bands=6,
+                                    depth=4,
+                                    max_freq=10,
+                                    num_latents=256,
+                                    latent_dim=512,
+                                    cross_heads=1,
+                                    latent_heads=8,
+                                    cross_dim_head=64,
+                                    latent_dim_head=64,
+                                    attn_dropout=0.,
+                                    ff_dropout=0.,
+                                    weight_tie_layers=False,
+                                    fourier_encode_data=True,
+                                    self_per_cross_attn=1,
+                                    final_classifier_head=False,
+                                    dataset_history=dataset_history,
+                                    dataset2num_classes=dataset2num_classes)
     else:
         print('Error!')
         sys.exit(0)
