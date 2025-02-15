@@ -1,3 +1,4 @@
 /packnet_models/__pycache__/*
 /utils/__pycache__/*
 /checkpoints_perceiver/baseline_scratch/perceiver/*
+checkpoints_perceiver/baseline_scratch/perceiver/*
