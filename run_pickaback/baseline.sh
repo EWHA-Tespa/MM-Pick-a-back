@@ -26,7 +26,7 @@ DATASETS=(
 )
 
 GPU_ID=0
-ARCH='lenet5'
+ARCH='perceiver'
 FINETUNE_EPOCHS=100
 seed=2
 

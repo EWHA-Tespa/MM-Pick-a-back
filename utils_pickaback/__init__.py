@@ -59,9 +59,9 @@ def set_dataset_paths(train_path, val_path, dataset):
     if not val_path:
         if (dataset in ['imagenet', 'face_verification', 'emotion', 'gender'] or
             dataset[:3] == 'age'):
-            val_path = '/data_library/%s/val' % (dataset)
+            val_path = '/data_library_library/%s/val' % (dataset)
         else:
-            val_path = '/data_library/%s/test' % (dataset)
+            val_path = '/data_library_library/%s/test' % (dataset)
 
 
 def set_dataset_paths_1param(args):
