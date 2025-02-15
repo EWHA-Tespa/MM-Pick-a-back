@@ -2,3 +2,4 @@
 /utils/__pycache__/*
 /checkpoints_perceiver/baseline_scratch/perceiver/*
 checkpoints_perceiver/baseline_scratch/perceiver/*
+checkpoints_perceiver/baseline_scratch/perceiver/food_containers/checkpoint*
