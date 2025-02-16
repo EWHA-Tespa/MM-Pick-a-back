@@ -4,7 +4,7 @@
 TARGET_TASK_ID=1
 
 dataset=(
-   'Art_Design'
+    'Art_Design'
     'Automobiles'
     'Books'
     'Dance'

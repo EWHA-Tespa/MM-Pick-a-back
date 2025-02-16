@@ -1,7 +1,7 @@
 #!/bin/bash
 
 dataset=(
-   'Art_Design'
+    'Art_Design'
     'Automobiles'
     'Books'
     'Dance'
