@@ -19,7 +19,7 @@ import numpy as np
 import utils_pickaback as utils
 from utils_pickaback import Optimizers
 from utils_pickaback.packnet_manager import Manager
-import utils_pickaback.cifar100_dataset as dataset
+import utils_pickaback.n24news_dataset as dataset
 import packnet_models_pickaback as packnet_models
 
 import copy
@@ -52,27 +52,30 @@ logfile = ''
 initial_from_task = ''
 ################################
 DATASETS = [
-    'None',  # dummy
-    'aquatic_mammals',
-    'fish',
-    'flowers',
-    'food_containers',
-    'fruit_and_vegetables',
-    'household_electrical_devices',
-    'household_furniture',
-    'insects',
-    'large_carnivores',
-    'large_man-made_outdoor_things',
-    'large_natural_outdoor_scenes',
-    'large_omnivores_and_herbivores',
-    'medium_mammals',
-    'non-insect_invertebrates',
-    'people',
-    'reptiles',
-    'small_mammals',
-    'trees',
-    'vehicles_1',
-    'vehicles_2'
+    "Art & Design",
+    "Automobiles",
+    "Books",
+    "Dance",
+    "Economy",
+    "Education",
+    "Fashion & Style",
+    "Food",
+    "Global Business",
+    "Health",
+    "Media",
+    "Movies",
+    "Music",
+    "Opinion",
+    "Real Estate",
+    "Science",
+    "Sports",
+    "Style",
+    "Technology",
+    "Television",
+    "Theater",
+    "Travel",
+    "Well",
+    "Your Money"
 ]
 ################################
 val_batch_size = 50

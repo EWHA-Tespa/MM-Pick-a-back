@@ -16,7 +16,7 @@ def cifar100_train_loader(dataset_name, train_batch_size, num_workers=4, pin_mem
         normalize,
     ])
 
-    train_dataset = datasets.ImageFolder('/data_library/cifar100/train/{}'.format(dataset_name),
+    train_dataset = datasets.ImageFolder('/data_library/n24news/image/train/{}'.format(dataset_name),
             train_transform)
 
     return torch.utils.data.DataLoader(train_dataset,
@@ -55,7 +55,7 @@ def train_loader(dataset_name, train_batch_size, num_workers=4, pin_memory=True,
         normalize,
     ])
 
-    train_dataset = datasets.ImageFolder('/data_library/cifar100/train/{}'.format(dataset_name),
+    train_dataset = datasets.ImageFolder('/data_library/n24news/image/train/{}'.format(dataset_name),
             train_transform)
 
     return torch.utils.data.DataLoader(train_dataset,

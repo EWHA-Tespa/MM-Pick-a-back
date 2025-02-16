@@ -16,7 +16,7 @@ def train_loader(dataset_name, train_batch_size, num_workers=4, pin_memory=True,
         normalize,
     ])
 
-    train_dataset = datasets.ImageFolder('/data_library/cifar100/train/{}'.format(dataset_name),
+    train_dataset = datasets.ImageFolder('/data_library/n24news/image/train/{}'.format(dataset_name),
             train_transform)
 
     return torch.utils.data.DataLoader(train_dataset,
@@ -24,19 +24,20 @@ def train_loader(dataset_name, train_batch_size, num_workers=4, pin_memory=True,
         num_workers=num_workers, pin_memory=pin_memory)
 
 
-def val_loader(dataset_name, val_batch_size, num_workers=4, pin_memory=True, normalize=None):
-    if normalize is None:
-        normalize = transforms.Normalize(
-            mean=mean[dataset_name], std=std[dataset_name])
+def val_loader(dataset_name, val_batch_size, num_workers=4, pin_memory=True):
+    val_transform = transforms.Compose([
+        transforms.ToTensor(),
+    ])
+    
+    val_dataset = datasets.ImageFolder(
+        '/data_library/n24news/image/test/{}'.format(dataset_name),
+        transform=val_transform
+    )
 
-    val_dataset = \
-        datasets.ImageFolder('/data_library/cifar100/test/{}'.format(
-                dataset_name),
-                transforms.Compose([
-                    transforms.ToTensor(),
-                    normalize,
-                ]))
-
-    return torch.utils.data.DataLoader(val_dataset,
-        batch_size=val_batch_size, shuffle=False, sampler=None,
-        num_workers=num_workers, pin_memory=pin_memory)
+    return torch.utils.data.DataLoader(
+        val_dataset,
+        batch_size=val_batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory
+    )

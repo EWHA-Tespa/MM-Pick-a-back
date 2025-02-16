@@ -1,31 +1,34 @@
 #!/bin/bash
 
 dataset=(
-    'None'     # dummy
-    'aquatic_mammals' #1
-    'fish' #2
-    'flowers' #3
-    'food_containers' #4
-    'fruit_and_vegetables' #5
-    'household_electrical_devices' #6
-    'household_furniture' #7
-    'insects' #8
-    'large_carnivores' #9
-    'large_man-made_outdoor_things' #10
-    'large_natural_outdoor_scenes' #11
-    'large_omnivores_and_herbivores' #12
-    'medium_mammals' #13
-    'non-insect_invertebrates' #14
-    'people' #15
-    'reptiles' #16
-    'small_mammals' #17
-    'trees' #18
-    'vehicles_1' #19
-    'vehicles_2' #20
+   'Art_Design'
+    'Automobiles'
+    'Books'
+    'Dance'
+    'Economy'
+    'Education'
+    'Fashion_Style'
+    'Food'
+    'Global_Business'
+    'Health'
+    'Media'
+    'Movies'
+    'Music'
+    'Opinion'
+    'Real_Estate'
+    'Science'
+    'Sports'
+    'Style'
+    'Technology'
+    'Television'
+    'Theater'
+    'Travel'
+    'Well'
+    'Your_Money'
 )
 
 num_classes=(
-    5
+    24
 )
 
 init_lr=(

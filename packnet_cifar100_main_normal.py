@@ -21,7 +21,7 @@ import numpy as np
 import utils
 from utils import Optimizers
 from utils.packnet_manager import Manager
-import utils.cifar100_dataset as dataset
+import utils.n24news_dataset as dataset
 import packnet_models
 
 model_urls = {
@@ -248,8 +248,8 @@ def main():
             'fc_bias': {}
         }
 
-    train_loader = dataset.train_loader(args.dataset, args.batch_size)
-    val_loader = dataset.val_loader(args.dataset, args.val_batch_size)
+    train_loader = dataset.train_loader(args.batch_size)
+    val_loader = dataset.val_loader(args.val_batch_size)
 
     # if we are going to save checkpoint in other folder, then we recalculate the starting epoch
     if args.save_folder != args.load_folder:

@@ -23,7 +23,7 @@ import numpy as np
 import utils
 from utils import Optimizers, set_logger
 from utils.manager import Manager
-import utils.cifar100_dataset as dataset
+import utils.n24news_dataset as dataset
 import models
 import models.layers as nl
 
