@@ -238,6 +238,27 @@ def main():
         custom_cfg = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M']
         model = models.__dict__[args.arch](custom_cfg, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes,
             network_width_multiplier=args.network_width_multiplier, shared_layer_info=shared_layer_info)
+    elif args.arch == 'perceiver':
+        model = models.__dict__[args.arch](
+                                    input_channels=3,
+                                    input_axis=2,
+                                    num_freq_bands=6,
+                                    depth=4,
+                                    max_freq=10,
+                                    num_latents=256,
+                                    latent_dim=512,
+                                    cross_heads=1,
+                                    latent_heads=8,
+                                    cross_dim_head=64,
+                                    latent_dim_head=64,
+                                    attn_dropout=0.,
+                                    ff_dropout=0.,
+                                    weight_tie_layers=False,
+                                    fourier_encode_data=True,
+                                    self_per_cross_attn=1,
+                                    final_classifier_head=False,
+                                    dataset_history=dataset_history,
+                                    dataset2num_classes=dataset2num_classes)
     else:
         print('Error!')
         sys.exit(1)

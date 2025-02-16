@@ -37,7 +37,7 @@ pruning_lr=(
 )
 
 GPU_ID=0
-arch='lenet5'
+arch='perceiver'
 finetune_epochs=100
 network_width_multiplier=1.0
 max_network_width_multiplier=1.0

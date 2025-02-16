@@ -673,3 +673,7 @@
 2023-05-24 17:05:41,107 - root - INFO - We choose pruning_ratio 0.8
 2023-05-24 17:08:44,025 - root - INFO - We choose pruning_ratio 0.8
 2023-05-24 17:13:43,124 - root - INFO - We choose pruning_ratio 0.8
+2025-02-15 07:52:18,502 - root - INFO - We choose pruning_ratio 0.8
+2025-02-15 13:20:12,522 - root - INFO - Finetune stage...
+2025-02-15 13:20:13,328 - root - INFO - In train()-> Train Ep. #1 loss: 1.610, accuracy: 18.76, lr: 0.01, sparsity: 0.000, network_width_mpl: 1.0
+2025-02-15 13:20:13,430 - root - INFO - In validate()-> Val Ep. #1 loss: 1.609, accuracy: 20.00, sparsity: 0.000, task1 ratio: 1.000, zero ratio: 0.000, mpl: 1.0

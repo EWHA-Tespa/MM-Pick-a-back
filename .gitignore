@@ -1,5 +1,5 @@
 /packnet_models/__pycache__/*
 /utils/__pycache__/*
-/checkpoints_perceiver/baseline_scratch/perceiver/*
-checkpoints_perceiver/baseline_scratch/perceiver/*
-checkpoints_perceiver/baseline_scratch/perceiver/food_containers/checkpoint*
+checkpoints_perceiver/*
+utils/__pycache__/*
+models/__pycache__/*
