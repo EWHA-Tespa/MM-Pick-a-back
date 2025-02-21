@@ -217,9 +217,9 @@ class SharableLinear(nn.Module):
                 self._buffers[key] = fn(buf)
 
         self.weight.data = fn(self.weight.data)
-        self.bias.data = fn(self.bias.data)
+        if self.bias is not None:
+            self.bias.data = fn(self.bias.data)
 
-'''
 class SharableMultiheadAttention(nn.Module):
     def __init__(self, embed_dim, num_heads, dropout=0.1,
                  mask_init='1s', mask_scale=1e-2, 
@@ -291,7 +291,6 @@ class SharableMultiheadAttention(nn.Module):
 
         # 7. 최종 Linear Projection 후 반환
         return self.out_proj(attn_output), attn_weights
-'''
 
 def exists(val):
     return val is not None
