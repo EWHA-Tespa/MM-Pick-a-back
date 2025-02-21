@@ -8,7 +8,6 @@ import torch.nn.functional as F
 from einops import rearrange, repeat
 
 # helpers
-
 def exists(val):
     return val is not None
 
@@ -18,7 +17,7 @@ def default(val, d):
 def cache_fn(f):
     cache = None
     @wraps(f)
-    def cached_fn(*args, _cache = True, **kwargs):
+    def cached_fn(*args, _cache=True, **kwargs):
         if not _cache:
             return f(*args, **kwargs)
         nonlocal cache
@@ -28,51 +27,7 @@ def cache_fn(f):
         return cache
     return cached_fn
 
-# structured dropout, more effective than traditional attention dropouts
-
-def dropout_seq(seq, mask, dropout):
-    b, n, *_, device = *seq.shape, seq.device
-    logits = torch.randn(b, n, device=device)
-
-    if exists(mask):
-        logits = logits.masked_fill(~mask, -torch.finfo(logits.dtype).max)
-
-    keep_prob = 1. - dropout
-    num_keep = max(1, int(keep_prob * n))
-    keep_indices = logits.topk(num_keep, dim=1).indices
-
-    batch_indices = torch.arange(b, device=device)
-    batch_indices = rearrange(batch_indices, 'b -> b 1')
-
-    seq = seq[batch_indices, keep_indices]
-
-    if exists(mask):
-        seq_counts = mask.sum(dim=-1)
-        seq_keep_counts = torch.ceil(seq_counts * keep_prob).int()
-        keep_mask = torch.arange(num_keep, device=device) < rearrange(seq_keep_counts, 'b -> b 1')
-
-        mask = mask[batch_indices, keep_indices] & keep_mask
-
-    return seq, mask
-
-# helper classes
-
-class PreNorm(nn.Module):
-    def __init__(self, dim, fn, context_dim=None):
-        super().__init__()
-        self.fn = fn
-        self.norm = nn.LayerNorm(dim)
-        self.norm_context = nn.LayerNorm(context_dim) if exists(context_dim) else None
-
-    def forward(self, x, **kwargs):
-        x = self.norm(x)
-
-        # ✅ context 인자가 존재하는 경우에만 적용
-        if exists(self.norm_context) and 'context' in kwargs:
-            kwargs['context'] = self.norm_context(kwargs['context'])
-
-        return self.fn(x, **kwargs)
-
+# 🔥✅ `FeedForward` 추가 ✅🔥
 class GEGLU(nn.Module):
     def forward(self, x):
         x, gates = x.chunk(2, dim=-1)
@@ -89,6 +44,19 @@ class FeedForward(nn.Module):
 
     def forward(self, x):
         return self.net(x)
+
+class PreNorm(nn.Module):
+    def __init__(self, dim, fn, context_dim=None):
+        super().__init__()
+        self.fn = fn
+        self.norm = nn.LayerNorm(dim)
+        self.norm_context = nn.LayerNorm(context_dim) if exists(context_dim) else None
+
+    def forward(self, x, **kwargs):
+        x = self.norm(x)
+        if exists(self.norm_context) and 'context' in kwargs:
+            kwargs['context'] = self.norm_context(kwargs['context'])
+        return self.fn(x, **kwargs)
 
 class Attention(nn.Module):
     def __init__(self, query_dim, context_dim=None, heads=8, dim_head=64):
@@ -125,8 +93,6 @@ class Attention(nn.Module):
         out = rearrange(out, '(b h) n d -> b n (h d)', h=h)
         return self.to_out(out)
 
-# main class
-
 class PerceiverIO(nn.Module):
     def __init__(
         self,
@@ -143,7 +109,9 @@ class PerceiverIO(nn.Module):
         latent_dim_head=64,
         weight_tie_layers=False,
         decoder_ff=False,
-        seq_dropout_prob=0.
+        seq_dropout_prob=0.,
+        dataset_history=None,  # 🔥 ✅ PackNet 연동 추가
+        dataset2num_classes=None  # 🔥 ✅ PackNet 연동 추가
     ):
         super().__init__()
         self.seq_dropout_prob = seq_dropout_prob
@@ -175,18 +143,21 @@ class PerceiverIO(nn.Module):
         )
         self.decoder_ff = PreNorm(queries_dim, FeedForward(queries_dim)) if decoder_ff else None
 
-        # ✅ logits_dim을 활용하여 Multi-Class Classification 지원
-        self.to_logits = nn.Linear(queries_dim, logits_dim)  
+        self.to_logits = nn.Linear(queries_dim, logits_dim)
+
+        # 🔥 ✅ PackNet 데이터셋 정보 추가
+        self.datasets = dataset_history if dataset_history else []
+        self.dataset2num_classes = dataset2num_classes if dataset2num_classes else {}
 
     def forward(self, data, mask=None, queries=None):
-        b, c, h, w = data.shape  # ✅ 기존 데이터 크기: [batch, 3, 32, 32]
-        data = rearrange(data, 'b c h w -> b (h w) c')  # ✅ 변환 후: [batch, 1024, 3]
+        b, c, h, w = data.shape
+        data = rearrange(data, 'b c h w -> b (h w) c')
         data = self.input_proj(data)
         b, *_, device = *data.shape, data.device
         x = repeat(self.latents, 'n d -> b n d', b=b)
 
         cross_attn, cross_ff = self.cross_attend_blocks
-        x = cross_attn(x, context=data, mask=mask) + x  # 🔹 수정된 `data` 사용
+        x = cross_attn(x, context=data, mask=mask) + x
         x = cross_ff(x) + x
 
         for self_attn, self_ff in self.layers:
@@ -194,7 +165,7 @@ class PerceiverIO(nn.Module):
             x = self_ff(x) + x
 
         if queries is None:
-            return self.to_logits(x.mean(dim=1))  # ✅ Mean Pooling 후 Classification 수행
+            return self.to_logits(x.mean(dim=1))
 
         if queries.ndim == 2:
             queries = repeat(queries, 'n d -> b n d', b=b)
@@ -205,17 +176,13 @@ class PerceiverIO(nn.Module):
             latents = latents + self.decoder_ff(latents)
 
         return self.to_logits(latents)
-
+    
     def add_dataset(self, dataset, num_classes):
         """Adds a new dataset to the classifier."""
-        if not hasattr(self, 'datasets'):
-            self.datasets = []
-            self.dataset2num_classes = {}
-
         if dataset not in self.datasets:
             self.datasets.append(dataset)
             self.dataset2num_classes[dataset] = num_classes
-            self.to_logits = nn.Linear(self.latents.shape[-1], num_classes)  # ✅ classifier 업데이트
+            self.to_logits = nn.Linear(self.latents.shape[-1], num_classes)
             nn.init.normal_(self.to_logits.weight, 0, 0.01)
             nn.init.constant_(self.to_logits.bias, 0)
 

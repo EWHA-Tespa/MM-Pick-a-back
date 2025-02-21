@@ -126,6 +126,7 @@ class Attention(nn.Module):
 # main class
 
 class perceiver(nn.Module):
+    
     def __init__(
         self,
         *,

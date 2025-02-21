@@ -1,0 +1,1 @@
+{"food_containers": "0.3880"}

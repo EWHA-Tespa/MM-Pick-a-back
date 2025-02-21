@@ -5,16 +5,14 @@ import torch
 from torch import nn, einsum
 import torch.nn.functional as F
 
-import models.layers as nl
-
 from einops import rearrange, repeat
 from einops.layers.torch import Reduce
+
+# --- Helper Functions and Classes (unchanged) ---
 
 __all__ = [
     'perceiver'
 ]
-
-# helpers
 
 def exists(val):
     return val is not None
@@ -125,7 +123,9 @@ class Attention(nn.Module):
         out = rearrange(out, '(b h) n d -> b n (h d)', h = h)
         return self.to_out(out)
 
-class Perceiver(nn.Module):
+# main class
+
+class perceiver(nn.Module):
     def __init__(
         self,
         *,
@@ -134,9 +134,7 @@ class Perceiver(nn.Module):
         max_freq,
         dataset_history,
         dataset2num_classes,
-        network_width_multiplier,
-        shared_layer_info = {},
-        init_weights = True,
+        init_weights=True,
         input_channels = 3,
         input_axis = 2,
         num_latents = 512,
@@ -148,11 +146,10 @@ class Perceiver(nn.Module):
         num_classes = 1000,
         attn_dropout = 0.,
         ff_dropout = 0.,
-        mode = 'Shared',
         weight_tie_layers = False,
         fourier_encode_data = True,
         self_per_cross_attn = 1,
-        final_classifier_head = True
+        final_classifier_head = True,
     ):
         """The shape of the final attention mechanism will be:
         depth * (cross attention -> self_per_cross_attn * self attention)
@@ -188,30 +185,20 @@ class Perceiver(nn.Module):
         self.num_freq_bands = num_freq_bands
 
         self.fourier_encode_data = fourier_encode_data
+
+        self.datasets = dataset_history
+        self.dataset2num_classes = dataset2num_classes
+        self.classifiers = []
+
         fourier_channels = (input_axis * ((num_freq_bands * 2) + 1)) if fourier_encode_data else 0
         input_dim = fourier_channels + input_channels
 
         self.latents = nn.Parameter(torch.randn(num_latents, latent_dim))
 
-        if mode == 'Shared':
-            get_cross_attn = lambda: PreNorm(latent_dim, nl.SharableAttention(latent_dim, input_dim, heads = cross_heads, dim_head = cross_dim_head, dropout = attn_dropout), context_dim = input_dim)
-        else:
-            get_cross_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, input_dim, heads = cross_heads, dim_head = cross_dim_head, dropout = attn_dropout), context_dim = input_dim)
-        
-        if mode == 'Shared':
-            get_cross_ff = lambda: PreNorm(latent_dim, nl.SharableFeedForward(latent_dim, dropout = ff_dropout))
-        else:
-            get_cross_ff = lambda: PreNorm(latent_dim, FeedForward(latent_dim, dropout = ff_dropout))
-        
-        if mode == 'Shared':
-            get_latent_attn = lambda: PreNorm(latent_dim, nl.SharableAttention(latent_dim, heads = latent_heads, dim_head = latent_dim_head, dropout = attn_dropout))
-        else:
-            get_latent_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, heads = latent_heads, dim_head = latent_dim_head, dropout = attn_dropout))
-        
-        if mode == 'Shared':
-            get_latent_ff = lambda: PreNorm(latent_dim, nl.SharableFeedForward(latent_dim, dropout = ff_dropout))
-        else:
-            get_latent_ff = lambda: PreNorm(latent_dim, FeedForward(latent_dim, dropout = ff_dropout))
+        get_cross_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, input_dim, heads = cross_heads, dim_head = cross_dim_head, dropout = attn_dropout), context_dim = input_dim)
+        get_cross_ff = lambda: PreNorm(latent_dim, FeedForward(latent_dim, dropout = ff_dropout))
+        get_latent_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, heads = latent_heads, dim_head = latent_dim_head, dropout = attn_dropout))
+        get_latent_ff = lambda: PreNorm(latent_dim, FeedForward(latent_dim, dropout = ff_dropout))
 
         get_cross_attn, get_cross_ff, get_latent_attn, get_latent_ff = map(cache_fn, (get_cross_attn, get_cross_ff, get_latent_attn, get_latent_ff))
 
@@ -237,27 +224,26 @@ class Perceiver(nn.Module):
         self.to_logits = nn.Sequential(
             Reduce('b n d -> b d', 'mean'),
             nn.LayerNorm(latent_dim),
-            nl.SharableLinear(latent_dim, num_classes) if mode == 'Shared' else nn.Linear(latent_dim, num_classes),
+            nn.Linear(latent_dim, num_classes)
         ) if final_classifier_head else nn.Identity()
 
-        self.network_width_multiplier = network_width_multiplier
-        self.shared_layer_info = shared_layer_info
-
-        self.datasets, self.classifiers = dataset_history, nn.ModuleList()
-        self.dataset2num_classes = dataset2num_classes
+        self.proj = nn.Linear(latent_dim, 84)
 
         if self.datasets:
             self._reconstruct_classifiers()
         
         if init_weights:
             self._initialize_weights()
-
+    
     def forward(
         self,
         data,
         mask = None,
         return_embeddings = False
     ):
+        if data.ndim == 4:
+            data = data.permute(0, 2, 3, 1)
+
         b, *axis, _, device, dtype = *data.shape, data.device, data.dtype
         assert len(axis) == self.input_axis, 'input data must have the right number of axis'
 
@@ -295,37 +281,48 @@ class Perceiver(nn.Module):
 
         # to logits
 
-        return self.to_logits(x)
+        if isinstance(self.to_logits, nn.Identity):
+            features = x.mean(dim=1)  # [B, latent_dim]
+            features = self.proj(features)  # [B, 84]
+            return self.classifier(features)
+        else:
+            return self.to_logits(x)
+        #return self.to_logits(x)
     
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                # nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.constant(m.bias, 0)
+
     def _reconstruct_classifiers(self):
         for dataset, num_classes in self.dataset2num_classes.items():
-            self.classifiers.append(nn.Linear(int, self.shared_layer_info[dataset]['network_width_multiplier'] * 2048) ,num_classes) # 모델 expand 할 필요 있을 때, Linear 추가함.
-    
+            classifier = nn.Linear(84, num_classes)
+            self._classifiers.append(classifier)
+        # Optionally register the active classifier as a submodule:
+        if self._classifiers:
+            self.classifier = self._classifiers[0]
+            
+
     def add_dataset(self, dataset, num_classes):
+        """Adds a new dataset to the classifier."""
         if dataset not in self.datasets:
             self.datasets.append(dataset)
             self.dataset2num_classes[dataset] = num_classes
-            self.classifiers.append(nn.Linear(int(2048 * self.network_width_multiplier), num_classes))
+            self.classifiers.append(nn.Linear(84, num_classes))
             nn.init.normal_(self.classifiers[self.datasets.index(dataset)].weight, 0, 0.01)
             nn.init.constant_(self.classifiers[self.datasets.index(dataset)].bias, 0)
-    
-    def set_dataset(self, dataset):
-        assert dataset in self.datasets
-        self.classifiers = self.classifiers[self.datasets.index(dataset)]
 
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nl.SharableLinear):
-                nn.init.normal_(m.weight, 0, 0.01)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nl.SharableAttention):
-                for param in m.parameters():
-                    if param.dim() > 1:
-                        nn.init.xavier_uniform_(param)
-                    else:
-                        nn.init.constant_(param, 0)
-            elif isinstance(m, nl.SharableFeedForward):
-                for param in m.parameters:
-                    if m.bias is not None:
-                        nn.init.constant_(param, 0)
+    def set_dataset(self, dataset):
+        """Change the active classifier."""
+        assert dataset in self.datasets
+        self.classifier = self.classifiers[self.datasets.index(dataset)]
