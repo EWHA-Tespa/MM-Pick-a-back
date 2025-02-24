@@ -17,12 +17,14 @@ import math
 from tqdm import tqdm
 import sys
 import numpy as np
+import wandb
 
 import utils
 from utils import Optimizers
 from utils.packnet_manager import Manager
 import utils.cifar100_dataset as dataset
 import packnet_models
+
 
 model_urls = {
     'vgg11': 'https://download.pytorch.org/models/vgg11-bbd30ac9.pth',
@@ -110,6 +112,16 @@ parser.add_argument('--jsonfile', type=str, help='file to restore baseline valid
 def main():
     """Do stuff."""
     args = parser.parse_args()
+    
+    run_name = f'{args.dataset}_{args.arch}_finetune'
+    group_name = f'{args.arch}_baseline'
+
+    wandb.init(project='mm-pick-a-back', 
+               name=run_name,
+               group=group_name,
+               config=vars(args),
+               tags=[args.dataset])
+
     if args.save_folder and not os.path.isdir(args.save_folder):
         os.makedirs(args.save_folder)
 
@@ -202,6 +214,8 @@ def main():
     model.add_dataset(args.dataset, args.num_classes)
     model.set_dataset(args.dataset)
     model = model.cuda()
+
+    wandb.watch(model, log='all')
     
     # For datasets whose image_size is 224 and also the first task
     if args.use_imagenet_pretrained and model.datasets.index(args.dataset) == 0: ##### Jinee ##### model.module.datasets.index(args.dataset) == 0:
@@ -336,6 +350,23 @@ def main():
     for epoch_idx in range(start_epoch, args.epochs):
         avg_train_acc = manager.train(optimizers, epoch_idx, curr_lrs)
         avg_val_acc = manager.validate(epoch_idx)
+
+        importances = [param.abs().mean().item() for param in model.parameters() if param.requires_grad]
+        avg_weight_importance = np.mean(importances)
+
+        total_params = sum(p.numel() for p in model.parameters())
+        nonzero = sum(torch.count_nonzero(p).item() for p in model.parameters())
+        sparsity = 100.0 * (total_params - nonzero) / total_params
+    
+        wandb.log({
+         "epoch": epoch_idx,
+         "train_accuracy": avg_train_acc,
+         "val_accuracy": avg_val_acc,
+         "avg_weight_importance": avg_weight_importance,
+         "total_params": total_params,
+         "sparsity": sparsity,
+         "learning_rate": curr_lrs[0]
+        }) 
 
         if args.mode == 'finetune':
             if epoch_idx + 1 == 50 or epoch_idx + 1 == 80:

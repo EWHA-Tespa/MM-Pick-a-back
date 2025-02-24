@@ -7,3 +7,4 @@ checkpoints_perceiver/CPG_single_scratch_woexp/perceiver/*
 checkpoints_lenet5/*
 logs_perceiver/*
 models/__pycache__/
+wandb/*
