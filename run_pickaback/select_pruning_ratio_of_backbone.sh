@@ -1,67 +1,39 @@
 #!/bin/bash
 
+# 사용법: ./select_pruning_ratio_of_backbone.sh dataset_config
+if [ "$#" -lt 1 ]; then
+    echo "Usage: $0 dataset_config"
+    exit 1
+fi
 
+DATASET_CONFIG=$1
+TASK_ID=4  
 TARGET_TASK_ID=1
 
-dataset=(
-    'Art_Design'
-    'Automobiles'
-    'Books'
-    'Dance'
-    'Economy'
-    'Education'
-    'Fashion_Style'
-    'Food'
-    'Global_Business'
-    'Health'
-    'Media'
-    'Movies'
-    'Music'
-    'Opinion'
-    'Real_Estate'
-    'Science'
-    'Sports'
-    'Style'
-    'Technology'
-    'Television'
-    'Theater'
-    'Travel'
-    'Well'
-    'Your_Money'
-)
-
-num_classes=(
-    24
-)
-
-init_lr=(
-    1e-2
-)
-
-pruning_lr=(
-    1e-3
-)
+DATASET=$(python3 get_dataset_name.py $DATASET_CONFIG $TASK_ID)
 
 GPU_ID=0
-arch='lenet5'
-finetune_epochs=100
-network_width_multiplier=1.0
-max_network_width_multiplier=1.0
-pruning_ratio_interval=0.1
-lr_mask=1e-4
+ARCH='lenet5'
+FINETUNE_EPOCHS=100
+NUM_CLASSES=-1   
+INIT_LR=1e-2
+PRUNING_LR=1e-3
+LR_MASK=1e-4
+NETWORK_WIDTH_MULTIPLIER=1.0
+MAX_NETWORK_WIDTH_MULTIPLIER=1.0
+PRUNING_RATIO_INTERVAL=0.1
+TOTAL_NUM_TASKS=5
+seed=2
 
-task_id=4
+VERSION_NAME='CPG_single_scratch_woexp'
+CHECKPOINTS_NAME="checkpoints_${ARCH}"
+BASELINE_FILE="logs_${ARCH}/baseline_${DATASET_CONFIG}_acc.txt"
 
-version_name='CPG_single_scratch_woexp' ##### CHANGE #####
-baseline_file='logs_'$arch'/baseline_cifar100_acc_scratch.txt' #### CHANGE #####
-
-####################################
-##### Select the pruning ratio #####
-####################################
-python tools/choose_appropriate_pruning_ratio_for_next_task_notrmfiles.py \
-    --pruning_ratio_to_acc_record_file checkpoints_${arch}/$version_name/$arch/${dataset[task_id]}/gradual_prune/record.txt \
-    --baseline_acc_file $baseline_file \
+python3 tools/choose_appropriate_pruning_ratio_for_next_task_notrmfiles.py \
+    --pruning_ratio_to_acc_record_file ${CHECKPOINTS_NAME}/${VERSION_NAME}/$ARCH/${DATASET}/gradual_prune/record.txt \
+    --baseline_acc_file $BASELINE_FILE \
     --allow_acc_loss 0.001 \
-    --dataset ${dataset[task_id]} \
-    --network_width_multiplier $network_width_multiplier \
-    --log_path checkpoints_${arch}/$version_name/$arch/${dataset[task_id]}/train.log
+    --dataset $DATASET \
+    --network_width_multiplier $NETWORK_WIDTH_MULTIPLIER \
+    --max_allowed_network_width_multiplier $MAX_NETWORK_WIDTH_MULTIPLIER \
+    --log_path ${CHECKPOINTS_NAME}/${VERSION_NAME}/$ARCH/${DATASET}/train.log
