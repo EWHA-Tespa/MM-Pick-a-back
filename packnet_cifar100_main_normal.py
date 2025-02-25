@@ -109,6 +109,7 @@ if args.num_classes < 0:
     args.num_classes = dataset_config_yaml[args.dataset_config]['num_classes']
 
 def main():
+    global args
     """Do stuff."""
 
     run_name = f'{args.dataset}_{args.arch}_finetune'
@@ -119,7 +120,6 @@ def main():
                group=group_name,
                config=vars(args),
                tags=[args.dataset])
-    global args
 
     if args.save_folder and not os.path.isdir(args.save_folder):
         os.makedirs(args.save_folder)
