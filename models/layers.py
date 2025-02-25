@@ -217,7 +217,8 @@ class SharableLinear(nn.Module):
                 self._buffers[key] = fn(buf)
 
         self.weight.data = fn(self.weight.data)
-        self.bias.data = fn(self.bias.data)
+        if self.bias is not None:
+            self.bias.data = fn(self.bias.data)
 
 '''
 class SharableMultiheadAttention(nn.Module):

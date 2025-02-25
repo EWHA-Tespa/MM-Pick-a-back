@@ -6,6 +6,7 @@ from torch import nn, einsum
 import torch.nn.functional as F
 
 from einops import rearrange, repeat
+import models.layers as nl
 
 # helpers
 
@@ -82,9 +83,9 @@ class FeedForward(nn.Module):
     def __init__(self, dim, mult=4):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(dim, dim * mult * 2),
+            nl.SharableLinear(dim, dim * mult * 2, bias=True, mask_init='1s', mask_scale=1e-2, threshold_fn='binarizer'),
             GEGLU(),
-            nn.Linear(dim * mult, dim)
+            nl.SharableLinear(dim * mult, dim, bias=True, mask_init='1s', mask_scale=1e-2, threshold_fn='binarizer')
         )
 
     def forward(self, x):
@@ -98,9 +99,9 @@ class Attention(nn.Module):
         self.scale = dim_head ** -0.5
         self.heads = heads
 
-        self.to_q = nn.Linear(query_dim, inner_dim, bias=False)
-        self.to_kv = nn.Linear(context_dim, inner_dim * 2, bias=False)
-        self.to_out = nn.Linear(inner_dim, query_dim)
+        self.to_q = nl.SharableLinear(query_dim, inner_dim, bias=False)
+        self.to_kv = nl.SharableLinear(context_dim, inner_dim * 2, bias=False)
+        self.to_out = nl.SharableLinear(inner_dim, query_dim)
 
     def forward(self, x, context=None, mask=None):
         h = self.heads
@@ -143,14 +144,16 @@ class PerceiverIO(nn.Module):
         latent_dim_head=64,
         weight_tie_layers=False,
         decoder_ff=False,
-        seq_dropout_prob=0.
+        seq_dropout_prob=0.,
+        dataset_history=None,
+        dataset2num_classes=None
     ):
         super().__init__()
         self.seq_dropout_prob = seq_dropout_prob
 
         self.latents = nn.Parameter(torch.randn(num_latents, latent_dim))
 
-        self.input_proj = nn.Linear(3, dim)
+        self.input_proj = nl.SharableLinear(3, dim)
 
         self.cross_attend_blocks = nn.ModuleList([
             PreNorm(latent_dim, Attention(latent_dim, dim, heads=cross_heads, dim_head=cross_dim_head), context_dim=dim),
@@ -175,12 +178,11 @@ class PerceiverIO(nn.Module):
         )
         self.decoder_ff = PreNorm(queries_dim, FeedForward(queries_dim)) if decoder_ff else None
 
-        # ✅ logits_dim을 활용하여 Multi-Class Classification 지원
-        self.to_logits = nn.Linear(queries_dim, logits_dim)  
+        self.to_logits = nl.SharableLinear(queries_dim, logits_dim, bias=False, mask_init='1s', mask_scale=1e-2, threshold_fn='binarizer')  
 
     def forward(self, data, mask=None, queries=None):
-        b, c, h, w = data.shape  # ✅ 기존 데이터 크기: [batch, 3, 32, 32]
-        data = rearrange(data, 'b c h w -> b (h w) c')  # ✅ 변환 후: [batch, 1024, 3]
+        b, c, h, w = data.shape  
+        data = rearrange(data, 'b c h w -> b (h w) c') 
         data = self.input_proj(data)
         b, *_, device = *data.shape, data.device
         x = repeat(self.latents, 'n d -> b n d', b=b)
@@ -215,7 +217,7 @@ class PerceiverIO(nn.Module):
         if dataset not in self.datasets:
             self.datasets.append(dataset)
             self.dataset2num_classes[dataset] = num_classes
-            self.to_logits = nn.Linear(self.latents.shape[-1], num_classes)  # ✅ classifier 업데이트
+            self.to_logits = nl.SharableLinear(self.latents.shape[-1], num_classes)  # ✅ classifier 업데이트
             nn.init.normal_(self.to_logits.weight, 0, 0.01)
             nn.init.constant_(self.to_logits.bias, 0)
 

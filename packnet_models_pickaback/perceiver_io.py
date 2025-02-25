@@ -6,7 +6,7 @@ from torch import nn, einsum
 import torch.nn.functional as F
 
 from einops import rearrange, repeat
-from models.layers import SharableLinear
+
 # helpers
 def exists(val):
     return val is not None
@@ -27,6 +27,7 @@ def cache_fn(f):
         return cache
     return cached_fn
 
+# 🔥✅ `FeedForward` 추가 ✅🔥
 class GEGLU(nn.Module):
     def forward(self, x):
         x, gates = x.chunk(2, dim=-1)
@@ -109,8 +110,8 @@ class PerceiverIO(nn.Module):
         weight_tie_layers=False,
         decoder_ff=False,
         seq_dropout_prob=0.,
-        dataset_history=None,  
-        dataset2num_classes=None 
+        dataset_history=None,  # 🔥 ✅ PackNet 연동 추가
+        dataset2num_classes=None  # 🔥 ✅ PackNet 연동 추가
     ):
         super().__init__()
         self.seq_dropout_prob = seq_dropout_prob
@@ -142,8 +143,9 @@ class PerceiverIO(nn.Module):
         )
         self.decoder_ff = PreNorm(queries_dim, FeedForward(queries_dim)) if decoder_ff else None
 
-        self.to_logits = SharableLinear(queries_dim, logits_dim)
+        self.to_logits = nn.Linear(queries_dim, logits_dim)
 
+        # 🔥 ✅ PackNet 데이터셋 정보 추가
         self.datasets = dataset_history if dataset_history else []
         self.dataset2num_classes = dataset2num_classes if dataset2num_classes else {}
 
