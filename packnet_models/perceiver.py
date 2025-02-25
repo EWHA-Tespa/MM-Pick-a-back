@@ -307,10 +307,10 @@ class perceiver(nn.Module):
     def _reconstruct_classifiers(self):
         for dataset, num_classes in self.dataset2num_classes.items():
             classifier = nn.Linear(84, num_classes)
-            self._classifiers.append(classifier)
+            self.classifiers.append(classifier)
         # Optionally register the active classifier as a submodule:
-        if self._classifiers:
-            self.classifier = self._classifiers[0]
+        if self.classifiers:
+            self.classifier = self.classifiers[0]
             
 
     def add_dataset(self, dataset, num_classes):

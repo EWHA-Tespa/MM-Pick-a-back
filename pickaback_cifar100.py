@@ -29,7 +29,7 @@ import csv
 ################################
 # default
 ################################
-arch = 'lenet5'
+arch = 'perceiver'
 num_classes = -1
 lr = 0.1
 batch_size = 32
@@ -85,7 +85,7 @@ target_id = 14
 ddvcc_list = []
 ddvec_list = []
 for task_id in range(1, 21):
-    arch = 'lenet5'        
+    arch = 'perceiver'        
     dataset_name = DATASETS[task_id]
     dataset_name_target = DATASETS[target_id]
     dataset_name_test = DATASETS[task_id]
@@ -201,6 +201,45 @@ for task_id in range(1, 21):
     elif arch == 'resnet50':
         model = packnet_models.__dict__[arch](dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
         model2 = packnet_models.__dict__[arch](dataset_history=dataset_history2, dataset2num_classes=dataset2num_classes2)
+    elif arch == 'perceiver':
+        model = packnet_models.__dict__[arch](
+                                    input_channels=3,
+                                    input_axis=2,
+                                    num_freq_bands=6,
+                                    depth=4,
+                                    max_freq=10,
+                                    num_latents=256,
+                                    latent_dim=512,
+                                    cross_heads=1,
+                                    latent_heads=8,
+                                    cross_dim_head=64,
+                                    latent_dim_head=64,
+                                    attn_dropout=0.,
+                                    ff_dropout=0.,
+                                    weight_tie_layers=False,
+                                    fourier_encode_data=True,
+                                    self_per_cross_attn=1,
+                                    final_classifier_head=False,
+                                    dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
+        model2 = packnet_models.__dict__[arch](
+                                    input_channels=3,
+                                    input_axis=2,
+                                    num_freq_bands=6,
+                                    depth=4,
+                                    max_freq=10,
+                                    num_latents=256,
+                                    latent_dim=512,
+                                    cross_heads=1,
+                                    latent_heads=8,
+                                    cross_dim_head=64,
+                                    latent_dim_head=64,
+                                    attn_dropout=0.,
+                                    ff_dropout=0.,
+                                    weight_tie_layers=False,
+                                    fourier_encode_data=True,
+                                    self_per_cross_attn=1,
+                                    final_classifier_head=False,
+                                    dataset_history=dataset_history2, dataset2num_classes=dataset2num_classes2)
     else:
         print('Error!')
         sys.exit(0)

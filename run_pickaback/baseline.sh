@@ -33,15 +33,17 @@ seed=2
 ####################
 ##### Baseline #####
 ####################
-TASK_ID=4
 
-CUDA_VISIBLE_DEVICES=$GPU_ID python packnet_cifar100_main_normal.py \
-    --arch $ARCH \
-    --dataset ${DATASETS[TASK_ID]} --num_classes 5 \
-    --lr 1e-2 \
-    --weight_decay 4e-5 \
-    --save_folder checkpoints_${ARCH}/baseline_scratch/$ARCH/${DATASETS[TASK_ID]} \
-    --epochs $FINETUNE_EPOCHS \
-    --mode finetune \
-    --logfile logs_${ARCH}/baseline_cifar100_acc_scratch.txt \
-    --seed $seed        
+# TASK_ID=4
+for TASK_ID in {1..20}; do
+    CUDA_VISIBLE_DEVICES=$GPU_ID python packnet_cifar100_main_normal.py \
+        --arch $ARCH \
+        --dataset ${DATASETS[TASK_ID]} --num_classes 5 \
+        --lr 1e-2 \
+        --weight_decay 4e-5 \
+        --save_folder checkpoints_${ARCH}/baseline_scratch/$ARCH/${DATASETS[TASK_ID]} \
+        --epochs $FINETUNE_EPOCHS \
+        --mode finetune \
+        --logfile logs_${ARCH}/baseline_cifar100_acc_scratch.txt \
+        --seed $seed        
+done

@@ -40,7 +40,7 @@ pruning_lr=(
 )
 
 GPU_ID=0
-arch='lenet5'
+arch='perceiver'
 finetune_epochs=100
 network_width_multiplier=1.0
 max_network_width_multiplier=2.0
@@ -48,7 +48,7 @@ pruning_ratio_interval=0.1
 lr_mask=1e-4
 total_num_tasks=5
 
-task_id=4
+task_id=12
 target_id=14
 seed=2
 
