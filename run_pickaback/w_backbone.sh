@@ -15,15 +15,6 @@ INIT_LR=1e-2
 PRUNING_LR=1e-3
 
 GPU_ID=0
-<<<<<<< HEAD
-arch='perceiver'
-finetune_epochs=100
-network_width_multiplier=1.0
-max_network_width_multiplier=2.0
-pruning_ratio_interval=0.1
-lr_mask=1e-4
-total_num_tasks=5
-=======
 ARCH='perceiver'
 FINETUNE_EPOCHS=100
 NETWORK_WIDTH_MULTIPLIER=1.0
@@ -31,7 +22,6 @@ MAX_NETWORK_WIDTH_MULTIPLIER=2.0
 PRUNING_RATIO_INTERVAL=0.1
 LR_MASK=1e-4
 TOTAL_NUM_TASKS=5
->>>>>>> n24news
 
 task_id=12
 target_id=14

@@ -22,8 +22,8 @@ import yaml
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default='', help='Name of dataset (or subfolder for datasets with subfolders)')
-parser.add_argument('--dataset_config', type=str, required=True,
-                    help='Dataset name (e.g., cifar100, n24news)')
+parser.add_argument('--dataset_config', type=str, default='n24news', choices=["cifar100", "n24news", "mscoco", "cub", "oxford"],
+                   help='Dataset configuration key defined in dataset_config.yaml (e.g., cifar100, n24news)')
 args = parser.parse_args()
 
 print(f"Received dataset_config: '{args.dataset_config}'") 
