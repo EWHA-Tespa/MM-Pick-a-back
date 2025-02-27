@@ -72,8 +72,8 @@ parser.add_argument('--weight_decay', type=float, default=4e-5,
                    help='Weight decay')
 
 parser.add_argument('--dataset', type=str, default='', help='Name of dataset')
-parser.add_argument('--dataset_config', type=str, default='n24news', choices=["cifar100", "n24news", "mscoco"],
-                   help='Dataset configuration key defined in dataset_config.yaml (e.g., cifar100, n24news, mscoco)')
+parser.add_argument('--dataset_config', type=str, default='n24news', choices=["cifar100", "n24news", "mscoco", "cub", "oxford"],
+                   help='Dataset configuration key defined in dataset_config.yaml (e.g., cifar100, n24news)')
 
 parser.add_argument('--cuda', action='store_true', default=True,
                    help='use CUDA')
@@ -200,6 +200,11 @@ def main():
                                     final_classifier_head=False,
                                     dataset_history=dataset_history,
                                     dataset2num_classes=dataset2num_classes)
+    elif args.arch == 'vilt':
+            model = packnet_models.__dict__['vilt'](pretrained=False,
+                                    dataset_history=dataset_history,
+                                    dataset2num_classes=dataset2num_classes)
+            
     else:
         print('Error!')
         sys.exit(0)
