@@ -86,30 +86,12 @@ n24news:
   mean: [0.485, 0.456, 0.406]
   std: [0.229, 0.224, 0.225]
   DATASETS:
-    - Art_Design
-    - Automobiles
-    - Books
-    - Dance
-    - Economy
-    - Education
-    - Fashion_Style
-    - Food
-    - Global_Business
-    - Health
-    - Media
-    - Movies
-    - Music
-    - Opinion
-    - Real_Estate
-    - Science
-    - Sports
-    - Style
-    - Technology
-    - Television
-    - Theater
-    - Travel
-    - Well
-    - Your_Money
+    - group1 # "Opinion", "Art_Design", "Television"
+    - group2 # "Music", "Travel", "Real_Estate"
+    - group3 # "Books", "Theater", "Health"
+    - group4 # "Sports", "Science", "Food"
+    - group5 # "Fashion_Style", "Movies", "Technology"
+    - group6 # "Dance", "Media", "Style"
 
 mscoco:
   train_path: /data_library/mscoco/train_processed/image
