@@ -24,9 +24,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default='', help='Name of dataset (or subfolder for datasets with subfolders)')
 parser.add_argument('--dataset_config', type=str, required=True,
                     help='Dataset name (e.g., cifar100, n24news)')
+parser.add_argument('--arch', type=str, default='lenet5', help='Architectures')
+parser.add_argument('--target_id', type=int, required=True, help='Target task ID for backbone selection')
 args = parser.parse_args()
 
+print(f"Architecture: {args.arch}")
 print(f"Received dataset_config: '{args.dataset_config}'") 
+print(f"Target ID: {args.target_id}")
 # dataset_config.yaml 파일 경로 설정
 config_file = "utils/dataset_config.yaml"
 
@@ -61,7 +65,7 @@ import packnet_models_pickaback as packnet_models
 ################################
 # 기본 설정
 ################################
-arch = 'perceiver'
+arch = args.arch
 num_classes = -1
 lr = 0.1
 batch_size = 32
@@ -89,8 +93,9 @@ max_iterations = 100
 ################################
 
 # target dataset 인덱스 (DATASETS 목록 내 번호; 필요에 따라 조정)
-target_id = 14
+target_id = args.target_id
 
+table_rows = []
 ddvcc_list = []
 ddvec_list = []
 
@@ -457,14 +462,42 @@ for task_id in range(start_index, num_classes_in_config):
         return spatial.distance.cosine(ddv1, ddv2)
 
     ddv1, ddv2 = compute_ddv_cos(profiling_inputs)
-    ddv_distance = compute_sim_cos(ddv1, ddv2)
-    print('DDV cos-cos [%d => %d] %.5f' % (task_id, target_id, ddv_distance))
-    ddvcc_list.append(ddv_distance)
+    ddv_cos_distance = compute_sim_cos(ddv1, ddv2)
+    print('DDV cos-cos [%d => %d] %.5f' % (task_id, target_id, ddv_cos_distance))
+    ddvcc_list.append(ddv_cos_distance)
 
     ddv1, ddv2 = compute_ddv_euc(profiling_inputs)
-    ddv_distance = compute_sim_cos(ddv1, ddv2)
-    print('DDV euc-cos [%d => %d] %.5f' % (task_id, target_id, ddv_distance))
-    ddvec_list.append(ddv_distance)
+    ddv_euc_distance = compute_sim_cos(ddv1, ddv2)
+    print('DDV euc-cos [%d => %d] %.5f' % (task_id, target_id, ddv_euc_distance))
+    ddvec_list.append(ddv_euc_distance)
+
+    table_rows.append({
+        'target_id': target_id,
+        'task_id': task_id,
+        'ddv_cos': ddv_cos_distance,
+        'ddv_euc': ddv_euc_distance
+    })    
+
+best_idx = np.argmax(ddvec_list)
+best_task = ddvec_list.index(max(ddvec_list)) + 1
 
 print('Selected backbone for target ' + str(target_id) +
-      ' = (euc) ' + str(ddvec_list.index(max(ddvec_list)) + 1))
+      ' = (euc) ' + str(best_task))
+
+result_csv = 'pickaback_result.csv'
+table_csv = 'pickback_table.csv'
+
+write_header = not os.path.exists(result_csv)
+with open(result_csv, 'a', newline='') as f:
+    writer = csv.DictWriter(f, fieldnames=['target_id', 'task_id'])
+    if write_header:
+        writer.writeheader()
+    writer.writerow({'target_id': target_id, 'task_id': best_task})
+
+write_header_table = not os.path.exists(table_csv)
+with open(table_csv, 'a', newline='') as f:
+    writer = csv.DictWriter(f, fieldnames=['target_id', 'task_id', 'ddv_cos', 'ddv_euc'])
+    if write_header_table:
+        writer.writeheader()
+    for row in table_rows:
+        writer.writerow(row)

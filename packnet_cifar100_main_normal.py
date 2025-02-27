@@ -72,8 +72,8 @@ parser.add_argument('--weight_decay', type=float, default=4e-5,
                    help='Weight decay')
 
 parser.add_argument('--dataset', type=str, default='', help='Name of dataset')
-parser.add_argument('--dataset_config', type=str, default='n24news', choices=["cifar100", "n24news"],
-                   help='Dataset configuration key defined in dataset_config.yaml (e.g., cifar100, n24news)')
+parser.add_argument('--dataset_config', type=str, default='n24news', choices=["cifar100", "n24news", "mscoco"],
+                   help='Dataset configuration key defined in dataset_config.yaml (e.g., cifar100, n24news, mscoco)')
 
 parser.add_argument('--cuda', action='store_true', default=True,
                    help='use CUDA')
