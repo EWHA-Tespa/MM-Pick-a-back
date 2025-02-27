@@ -18,7 +18,7 @@ class Manager(object):
         self.model = model
         self.shared_layer_info = shared_layer_info
         dataset_name = args.dataset if args.dataset else args.dataset_config
-        self.inference_dataset_idx = self.model.datasets.index(dataset_name) + 1 ##### Jinee ##### self.inference_dataset_idx = self.model.module.datasets.index(args.dataset) + 1
+        self.inference_dataset_idx = self.model.datasets.index(dataset_name) + 1
         self.pruner = SparsePruner(self.model, masks, self.args, None, None, self.inference_dataset_idx)
         self.train_loader = train_loader
         self.val_loader   = val_loader
@@ -44,15 +44,18 @@ class Manager(object):
                   desc='Train Epoch #{}: '.format(epoch_idx + 1),
                   disable=False,
                   ascii=True) as t:
-            for batch_idx, (data, target) in enumerate(self.train_loader):
+            # 수정: 배치가 dictionary 형태로 반환됨
+            for batch_idx, batch in enumerate(self.train_loader):
+                # 각 키를 cuda로 옮김
                 if self.args.cuda:
-                    data, target = data.cuda(), target.cuda()
+                    batch = {k: v.cuda() for k, v in batch.items()}
 
                 optimizers.zero_grad()
-                # Do forward-backward.
-                output = self.model(data)
-
-                num = data.size(0)
+                # 모델의 forward가 dictionary 입력을 받으므로 그대로 전달합니다.
+                output = self.model(batch, mask_text=False)
+                num = batch["image"].size(0)
+                # 타겟은 itm_labels 키에서 가져옴
+                target = batch["itm_labels"]
                 if self.args.dataset != 'face_verification':
                     train_accuracy.update(classification_accuracy(output, target), num)
 
@@ -60,13 +63,9 @@ class Manager(object):
                 train_loss.update(loss, num)
                 loss.backward()
 
-                # Set fixed param grads to 0.
+                # Fixed param 처리 및 pruning 관련 작업
                 self.pruner.do_weight_decay_and_make_grads_zero()
-
-                # Gradient is applied across all ranks
                 optimizers.step()
-
-                # Set pruned weights to 0.
                 self.pruner.make_pruned_zero()
 
                 t.set_postfix({'loss': train_loss.avg.item(),
@@ -76,7 +75,6 @@ class Manager(object):
                 t.update(1)
         return train_accuracy.avg.item()
 
-    #{{{ Evaluate classification
     def validate(self, epoch_idx, biases=None):
         """Performs evaluation."""
         self.pruner.apply_mask()
@@ -88,12 +86,12 @@ class Manager(object):
                   desc='Validate Epoch  #{}: '.format(epoch_idx + 1),
                   ascii=True) as t:
             with torch.no_grad():
-                for data, target in self.val_loader:
+                for batch in self.val_loader:
                     if self.args.cuda:
-                        data, target = data.cuda(), target.cuda()
-
-                    output = self.model(data)
-                    num = data.size(0)
+                        batch = {k: v.cuda() for k, v in batch.items()}
+                    output = self.model(batch, mask_text=False)
+                    num = batch["image"].size(0)
+                    target = batch["itm_labels"]
                     val_loss.update(self.criterion(output, target), num)
                     val_accuracy.update(classification_accuracy(output, target), num)
 

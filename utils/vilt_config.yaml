@@ -3,7 +3,7 @@ mscoco:
   train_caption_path: "/data_library/mscoco/train_processed/caption"
   test_image_path: "/data_library/mscoco/val_processed/image"   
   test_caption_path: "/data_library/mscoco/val_processed/caption"
-  subfolder: false
+  subfolder: true
   num_classes: 78
   resize: [224, 224]
   random_horizontal_flip: true

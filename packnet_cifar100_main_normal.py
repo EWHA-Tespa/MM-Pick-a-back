@@ -23,7 +23,7 @@ import wandb
 import utils
 from utils import Optimizers
 from utils.packnet_manager import Manager
-import utils.dataset as dataset
+import utils.dataset_vilt as dataset
 import packnet_models
 
 

@@ -1,4 +1,5 @@
 #!/bin/bash
+export CUDA_VISIBLE_DEVICES=2
 
 # 사용법: ./run_experiment.sh dataset_config
 if [ "$#" -lt 1 ]; then
@@ -9,7 +10,7 @@ fi
 DATASET_CONFIG=$1
 
 GPU_ID=0
-ARCH='perceiver'
+ARCH='vilt'
 FINETUNE_EPOCHS=100
 seed=2
 

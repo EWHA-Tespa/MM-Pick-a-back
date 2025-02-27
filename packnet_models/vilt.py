@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import timm
 import torchvision.transforms as transforms
-from transformers import BertConfig, BertEmbeddings, BertPredictionHeadTransform
+from transformers.models.bert.modeling_bert import BertConfig, BertEmbeddings, BertPredictionHeadTransform
 
 class Pooler(nn.Module):
     def __init__(self, hidden_size):
