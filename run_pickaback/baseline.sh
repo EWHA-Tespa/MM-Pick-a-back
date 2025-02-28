@@ -13,7 +13,7 @@ ARCH='perceiver'
 FINETUNE_EPOCHS=100
 seed=2
 
-for TASK_ID in {0..78}; do  # change according to the number of classes in the dataset
+for TASK_ID in {0..6}; do  # change according to the number of classes in the dataset
     DATASET=$(python3 get_dataset_name.py $DATASET_CONFIG $TASK_ID)
     
     CUDA_VISIBLE_DEVICES=$GPU_ID python3 packnet_cifar100_main_normal.py \

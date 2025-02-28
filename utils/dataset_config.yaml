@@ -79,8 +79,8 @@ cifar100:
 n24news:
   train_path: /data_library/n24news/image/train
   test_path: /data_library/n24news/image/test
-  subfolder: false
-  num_classes: 24
+  subfolder: true
+  num_classes: 6
   resize: [224, 224] # if arch='lenet', [32,32]
   random_horizontal_flip: true
   mean: [0.485, 0.456, 0.406]

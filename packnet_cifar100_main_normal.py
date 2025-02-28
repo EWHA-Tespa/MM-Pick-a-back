@@ -63,7 +63,7 @@ parser.add_argument('--num_classes', type=int, default=-1,
 
 parser.add_argument('--lr', type=float, default=0.1,
                    help='Learning rate for parameters, used for baselines')
-parser.add_argument('--batch_size', type=int, default=32,
+parser.add_argument('--batch_size', type=int, default=8,
                    help='input batch size for training')
 parser.add_argument('--val_batch_size', type=int, default=100,
                    help='input batch size for validation')
