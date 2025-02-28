@@ -13,14 +13,14 @@ ARCH='perceiver'
 FINETUNE_EPOCHS=100
 seed=2
 
-for TASK_ID in {0..78}; do  # change according to the number of classes in the dataset
+for TASK_ID in {1..6}; do  # change according to the number of classes in the dataset
     DATASET=$(python3 get_dataset_name.py $DATASET_CONFIG $TASK_ID)
     
     CUDA_VISIBLE_DEVICES=$GPU_ID python3 packnet_cifar100_main_normal.py \
         --arch $ARCH \
         --dataset_config $DATASET_CONFIG \
         --dataset $DATASET \
-        --num_classes -1 \
+        --num_classes 3 \
         --lr 1e-2 \
         --weight_decay 4e-5 \
         --save_folder checkpoints_${ARCH}/baseline_scratch/$ARCH/${DATASET_CONFIG}/${DATASET} \
