@@ -21,9 +21,11 @@ from torch.nn.parameter import Parameter
 import yaml
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--arch', type=str, default='lenet5', choices=['lenet5', 'perceiver'])
 parser.add_argument('--dataset', type=str, default='', help='Name of dataset (or subfolder for datasets with subfolders)')
 parser.add_argument('--dataset_config', type=str, default='n24news', choices=["cifar100", "n24news", "mscoco", "cub", "oxford"],
                    help='Dataset configuration key defined in dataset_config.yaml (e.g., cifar100, n24news)')
+parser.add_argument('--target_id', type=int, default=1)
 args = parser.parse_args()
 
 print(f"Architecture: {args.arch}")
@@ -99,8 +101,6 @@ ddvec_list = []
 
 # Iterate over the datasets
 for task_id in range(start_index, num_classes_in_config):
-    arch = 'perceiver' 
-
     dataset_name = DATASETS[task_id]
     dataset_name_target = DATASETS[target_id]
     dataset_name_test = DATASETS[task_id]

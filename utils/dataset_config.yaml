@@ -82,10 +82,13 @@ n24news:
   subfolder: true
   num_classes: 6
   resize: [224, 224] # if arch='lenet', [32,32]
+  crop:
+    size: [16, 16]
   random_horizontal_flip: true
   mean: [0.485, 0.456, 0.406]
   std: [0.229, 0.224, 0.225]
   DATASETS:
+    - None
     - group1 # "Opinion", "Art_Design", "Television"
     - group2 # "Music", "Travel", "Real_Estate"
     - group3 # "Books", "Theater", "Health"
