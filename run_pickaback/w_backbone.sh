@@ -48,15 +48,17 @@ pruning_ratio_interval=0.1
 lr_mask=1e-4
 total_num_tasks=5
 
-task_id=12
-target_id=14
+task_id=4 # backbone
+target_id=9 
 seed=2
+
+echo "task_id=$task_id, target_id=$target_id"
 
 version_name='CPG_fromsingle_scratch_woexp_target'
 single_version_name='CPG_single_scratch_woexp'
-baseline_file='logs_lenet5/baseline_cifar100_acc_scratch.txt'
-checkpoints_name='checkpoints_lenet5'
-
+baseline_file="logs_${arch}/baseline_cifar100_acc_scratch.txt"
+checkpoints_name="checkpoints_${arch}"
+PICKABACK_CSV="checkpoints_${arch}/pickaback_result.csv"
 ####################
 ##### Training #####
 ####################
