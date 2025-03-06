@@ -21,7 +21,6 @@ from utils_pickaback import Optimizers
 from utils_pickaback.packnet_manager import Manager
 import utils_pickaback.cifar100_dataset as dataset
 import packnet_models_pickaback as packnet_models
-
 import copy
 from scipy import spatial
 import csv
@@ -29,7 +28,7 @@ import csv
 ################################
 # default
 ################################
-arch = 'lenet5'
+arch = 'perceiver_io'
 num_classes = -1
 lr = 0.1
 batch_size = 32
@@ -85,7 +84,7 @@ target_id = 14
 ddvcc_list = []
 ddvec_list = []
 for task_id in range(1, 21):
-    arch = 'lenet5'        
+    arch = 'perceiver_io'        
     dataset_name = DATASETS[task_id]
     dataset_name_target = DATASETS[target_id]
     dataset_name_test = DATASETS[task_id]
@@ -201,6 +200,10 @@ for task_id in range(1, 21):
     elif arch == 'resnet50':
         model = packnet_models.__dict__[arch](dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
         model2 = packnet_models.__dict__[arch](dataset_history=dataset_history2, dataset2num_classes=dataset2num_classes2)
+    elif arch == 'perceiver_io':
+        perceiverIO_class = packnet_models.perceiver_io.PerceiverIO  
+        model = perceiverIO_class(depth=4, dim=512, queries_dim=512, num_latents=256, latent_dim=512, cross_heads=1, latent_heads=8, cross_dim_head=64, latent_dim_head=64, weight_tie_layers=False, decoder_ff=True, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
+        model2 = perceiverIO_class(depth=4, dim=512, queries_dim=512, num_latents=256, latent_dim=512, cross_heads=1, latent_heads=8, cross_dim_head=64, latent_dim_head=64, weight_tie_layers=False, decoder_ff=True, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
     else:
         print('Error!')
         sys.exit(0)
