@@ -117,10 +117,12 @@ class PerceiverIO(nn.Module):
         cross_dim_head=64,
         latent_dim_head=64,
         weight_tie_layers=False,
-        decoder_ff=False
+        decoder_ff=False,
+        seq_dropout_prob = 0.,
     ):
         super().__init__()
 
+        self.seq_dropout_prob = seq_dropout_prob
         self.datasets = dataset_history
         self.dataset2num_classes = dataset2num_classes
         self.classifiers = []
@@ -155,6 +157,9 @@ class PerceiverIO(nn.Module):
         x = repeat(self.latents, 'n d -> b n d', b=b)
 
         cross_attn, cross_ff = self.cross_attend_blocks
+
+        if self.training and self.seq_dropout_prob > 0:
+            data, mask = dropout_seq(data, mask, self.seq_dropout_prob)
         x = cross_attn(x, context=data, mask=mask) + x
         x = cross_ff(x) + x
 

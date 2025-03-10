@@ -40,7 +40,7 @@ pruning_lr=(
 )
 
 GPU_ID=0
-arch='lenet5'
+arch='perceiver_io'
 finetune_epochs=100
 network_width_multiplier=1.0
 max_network_width_multiplier=1.0
@@ -55,7 +55,7 @@ baseline_file='logs_'$arch'/baseline_cifar100_acc_scratch.txt' #### CHANGE #####
 ####################################
 ##### Select the pruning ratio #####
 ####################################
-python tools/choose_appropriate_pruning_ratio_for_next_task_notrmfiles.py \
+python3 tools/choose_appropriate_pruning_ratio_for_next_task_notrmfiles.py \
     --pruning_ratio_to_acc_record_file checkpoints_${arch}/$version_name/$arch/${dataset[task_id]}/gradual_prune/record.txt \
     --baseline_acc_file $baseline_file \
     --allow_acc_loss 0.001 \

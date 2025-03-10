@@ -208,8 +208,14 @@ def main():
             latent_heads=8,
             cross_dim_head=64,
             latent_dim_head=64,
+            num_classes=1000,
+            final_classifier_head=False,
+            init_weights=True,
             weight_tie_layers=False,
-            decoder_ff=True
+            ff_dropout=0.3,
+            attn_dropout=0.2,
+            decoder_ff=True,
+            seq_dropout_prob=0.1
         )
     else:
         print('Error!')

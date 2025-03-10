@@ -37,7 +37,7 @@ pruning_lr=(
 )
 
 GPU_ID=0
-arch='lenet5'
+arch='perceiver_io'
 finetune_epochs=100
 network_width_multiplier=1.0
 max_network_width_multiplier=1.0
@@ -57,7 +57,7 @@ baseline_file='logs_'$arch'/baseline_cifar100_acc_scratch.txt'
 ####################
 state=2
 while [ $state -eq 2 ]; do
-        CUDA_VISIBLE_DEVICES=$GPU_ID python CPG_cifar100_main_normal.py \
+        CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar100_main_normal.py \
            --arch $arch \
            --dataset ${dataset[task_id]} --num_classes ${num_classes[0]} \
            --lr ${init_lr[0]} \
@@ -76,8 +76,10 @@ while [ $state -eq 2 ]; do
     state=$?
     if [ $state -eq 2 ]
     then
+        echo "[DEBUG] Current network_width_multiplier: $network_width_multiplier"
         if [[ "$network_width_multiplier" == "$max_network_width_multiplier" ]]
         then
+            echo "[DEBUG] Max network width multiplier reached, breaking loop."
             break
         fi
         
@@ -104,7 +106,7 @@ nrof_epoch=$nrof_epoch_for_each_prune
 if [ $state -ne 5 ]
 then
     # gradually pruning
-    CUDA_VISIBLE_DEVICES=$GPU_ID python CPG_cifar100_main_normal.py \
+    CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar100_main_normal.py \
         --arch $arch \
         --dataset ${dataset[task_id]} --num_classes ${num_classes[0]}  \
         --lr ${pruning_lr[0]} \
@@ -136,7 +138,7 @@ then
             end_sparsity=$(bc <<< $end_sparsity+0.05)
         fi
 
-        CUDA_VISIBLE_DEVICES=$GPU_ID python CPG_cifar100_main_normal.py \
+        CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar100_main_normal.py \
             --arch $arch \
             --dataset ${dataset[task_id]} --num_classes ${num_classes[0]} \
             --lr ${pruning_lr[0]} \

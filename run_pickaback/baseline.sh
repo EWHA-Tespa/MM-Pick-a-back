@@ -26,8 +26,8 @@ DATASETS=(
 )
 
 GPU_ID=0
-ARCH='perceiver'
-FINETUNE_EPOCHS=100
+ARCH='perceiver_io'
+FINETUNE_EPOCHS=60
 seed=2
 
 ####################
@@ -35,7 +35,8 @@ seed=2
 ####################
 TASK_ID=4
 
-CUDA_VISIBLE_DEVICES=$GPU_ID python packnet_cifar100_main_normal.py \
+for TASK_ID in {17..20}; do
+CUDA_VISIBLE_DEVICES=$GPU_ID python3 packnet_cifar100_main_normal.py \
     --arch $ARCH \
     --dataset ${DATASETS[TASK_ID]} --num_classes 5 \
     --lr 1e-2 \
@@ -45,3 +46,4 @@ CUDA_VISIBLE_DEVICES=$GPU_ID python packnet_cifar100_main_normal.py \
     --mode finetune \
     --logfile logs_${ARCH}/baseline_cifar100_acc_scratch.txt \
     --seed $seed        
+done

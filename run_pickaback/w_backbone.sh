@@ -40,7 +40,7 @@ pruning_lr=(
 )
 
 GPU_ID=0
-arch='lenet5'
+arch='perceiver_io'
 finetune_epochs=100
 network_width_multiplier=1.0
 max_network_width_multiplier=2.0
@@ -54,15 +54,15 @@ seed=2
 
 version_name='CPG_fromsingle_scratch_woexp_target'
 single_version_name='CPG_single_scratch_woexp'
-baseline_file='logs_lenet5/baseline_cifar100_acc_scratch.txt'
-checkpoints_name='checkpoints_lenet5'
+baseline_file='logs_perceiver_io/baseline_cifar100_acc_scratch.txt'
+checkpoints_name='checkpoints_perceiver_io'
 
 ####################
 ##### Training #####
 ####################
 state=2
 while [ $state -eq 2 ]; do
-        CUDA_VISIBLE_DEVICES=$GPU_ID python CPG_cifar100_main_normal.py \
+        CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar100_main_normal.py \
            --arch $arch \
            --dataset ${dataset[target_id]} --num_classes ${num_classes[0]} \
            --lr ${init_lr[0]} \
