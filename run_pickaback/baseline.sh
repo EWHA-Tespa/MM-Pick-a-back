@@ -9,8 +9,8 @@ fi
 DATASET_CONFIG=$1
 
 GPU_ID=0
-ARCH='perceiver'
-FINETUNE_EPOCHS=100
+ARCH='perceiver_io'
+FINETUNE_EPOCHS=60
 seed=2
 
 for TASK_ID in {1..15}; do  # change according to the number of classes in the dataset

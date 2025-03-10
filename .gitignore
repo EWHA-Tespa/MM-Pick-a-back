@@ -8,3 +8,4 @@ checkpoints_lenet5/*
 logs_perceiver/*
 models/__pycache__/
 wandb/*
+checkpoints_perceiver_io/*

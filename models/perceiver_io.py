@@ -3,6 +3,7 @@ from torch import nn, einsum
 import torch.nn.functional as F
 from einops import rearrange, repeat
 import models.layers as nl
+from einops.layers.torch import Reduce
 
 # helpers
 
@@ -62,19 +63,21 @@ class GEGLU(nn.Module):
         return x * F.gelu(gates)
 
 class FeedForward(nn.Module):
-    def __init__(self, dim, mult=4):
+    def __init__(self, dim, mult=4, dropout=0.3):
         super().__init__()
         self.net = nn.Sequential(
             nl.SharableLinear(dim, dim * mult * 2),
             GEGLU(),
-            nl.SharableLinear(dim * mult, dim)
+            nn.Dropout(dropout),
+            nl.SharableLinear(dim * mult, dim),
+            nn.Dropout(dropout)
         )
 
     def forward(self, x):
         return self.net(x)
 
 class Attention(nn.Module):
-    def __init__(self, query_dim, context_dim=None, heads=8, dim_head=64):
+    def __init__(self, query_dim, context_dim=None, heads=8, dim_head=64, dropout=0.2):
         super().__init__()
         inner_dim = dim_head * heads
         context_dim = default(context_dim, query_dim)
@@ -83,6 +86,8 @@ class Attention(nn.Module):
 
         self.to_q = nl.SharableLinear(query_dim, inner_dim, bias=False, mask_init='1s', mask_scale=1e-2, threshold_fn='binarizer')
         self.to_kv = nl.SharableLinear(context_dim, inner_dim * 2, bias=False, mask_init='1s', mask_scale=1e-2, threshold_fn='binarizer')
+
+        self.dropout = nn.Dropout(dropout)
         self.to_out = nl.SharableLinear(inner_dim, query_dim, bias=True, mask_init='1s', mask_scale=1e-2, threshold_fn='binarizer')
 
     def forward(self, x, context=None, mask=None):
@@ -97,6 +102,7 @@ class Attention(nn.Module):
         sim = einsum('b i d, b j d -> b i j', q, k) * self.scale
 
         attn = sim.softmax(dim=-1)
+        attn = self.dropout(attn)
         out = einsum('b i j, b j d -> b i d', attn, v)
         out = rearrange(out, '(b h) n d -> b n (h d)', h=h)
         return self.to_out(out)
@@ -117,10 +123,16 @@ class PerceiverIO(nn.Module):
         latent_heads=8,
         cross_dim_head=64,
         latent_dim_head=64,
+        mode = 'Shared',
+        num_classes = 1000,
+        final_classifier_head=True,
         init_weights=True,
         datasets=True,
         weight_tie_layers=False,
-        decoder_ff=False
+        attn_dropout = 0.,
+        ff_dropout = 0.,
+        decoder_ff=False,
+        seq_dropout_prob = 0.
     ):
         super().__init__()
 
@@ -130,22 +142,28 @@ class PerceiverIO(nn.Module):
 
         self.latents = nn.Parameter(torch.randn(num_latents, latent_dim))
         self.input_proj = nn.Linear(3, dim)
+        self.proj = nn.Linear(latent_dim, 84)
         self.cross_attend_blocks = nn.ModuleList([
-            PreNorm(latent_dim, Attention(latent_dim, dim, heads=cross_heads, dim_head=cross_dim_head), context_dim=dim),
+            PreNorm(latent_dim, Attention(latent_dim, dim, heads=cross_heads, dim_head=cross_dim_head, dropout=attn_dropout), context_dim=dim),
             PreNorm(latent_dim, FeedForward(latent_dim))
         ])
+        self.seq_dropout_rate = seq_dropout_prob
 
         self.layers = nn.ModuleList([])
         for _ in range(depth):
             self.layers.append(nn.ModuleList([
-                PreNorm(latent_dim, Attention(latent_dim, heads=latent_heads, dim_head=latent_dim_head)),
-                PreNorm(latent_dim, FeedForward(latent_dim))
+                PreNorm(latent_dim, Attention(latent_dim, heads=latent_heads, dim_head=latent_dim_head, dropout=attn_dropout)),
+                PreNorm(latent_dim, FeedForward(latent_dim, dropout=ff_dropout))
             ]))
 
-        self.decoder_cross_attn = PreNorm(queries_dim, Attention(queries_dim, latent_dim, heads=cross_heads, dim_head=cross_dim_head), context_dim=latent_dim)
-        self.decoder_ff = PreNorm(queries_dim, FeedForward(queries_dim)) if decoder_ff else None
+        self.decoder_cross_attn = PreNorm(queries_dim, Attention(queries_dim, latent_dim, heads=cross_heads, dim_head=cross_dim_head, dropout=attn_dropout), context_dim=latent_dim)
+        self.decoder_ff = PreNorm(queries_dim, FeedForward(queries_dim, dropout=ff_dropout)) if decoder_ff else None
 
-        self.proj = nl.SharableLinear(latent_dim, 84)
+        self.to_logits = nn.Sequential(
+            Reduce('b n d -> b d', 'mean'),
+            nn.LayerNorm(latent_dim),
+            nl.SharableLinear(latent_dim, num_classes) if mode == 'Shared' else nn.Linear(latent_dim, num_classes)
+        ) if final_classifier_head else nn.Identity()
         if init_weights:
             self._initialize_weights()
         if datasets:
@@ -161,6 +179,9 @@ class PerceiverIO(nn.Module):
         x = repeat(self.latents, 'n d -> b n d', b=b)
 
         cross_attn, cross_ff = self.cross_attend_blocks
+
+        if self.training and self.seq_dropout_rate > 0.:
+            data, mask = dropout_seq(data, mask, self.seq_dropout_rate)
         x = cross_attn(x, context=data, mask=mask) + x
         x = cross_ff(x) + x
 
@@ -169,15 +190,19 @@ class PerceiverIO(nn.Module):
             x = self_ff(x) + x
 
         if not exists(queries):
-            features = self.proj(x.mean(dim=1))
-            return self.classifier(features)
+            if isinstance(self.to_logits, nn.Identity):
+                features = x.mean(dim=1)
+                features = self.proj(features)
+                return self.classifier(features)
+            else:
+                return self.to_logits(x)
 
-        latents = self.decoder_cross_attn(queries, context=x)
+        # latents = self.decoder_cross_attn(queries, context=x)
 
-        if exists(self.decoder_ff):
-            latents = latents + self.decoder_ff(latents)
+        # if exists(self.decoder_ff):
+        #     latents = latents + self.decoder_ff(latents)
 
-        return self.to_logits(latents)
+        # return self.to_logits(latents)
 
     def _initialize_weights(self):
         for m in self.modules():
@@ -198,12 +223,16 @@ class PerceiverIO(nn.Module):
     def add_dataset(self, dataset, num_classes):
         """새로운 데이터셋을 추가하고, 새로운 분류기를 생성"""
         if dataset not in self.datasets:
+            # print(f"[DEBUG] 데이터셋 {dataset} 추가 중...")
             self.datasets.append(dataset)
             self.dataset2num_classes[dataset] = num_classes
             classifier = nl.SharableLinear(84, num_classes, bias=True, mask_init='1s', mask_scale=1e-2, threshold_fn='binarizer')
             self.classifiers.append(classifier)
             nn.init.normal_(self.classifiers[self.datasets.index(dataset)].weight, 0, 0.01)
             nn.init.constant_(self.classifiers[self.datasets.index(dataset)].bias, 0)
+
+            # print(f"[DEBUG] 추가 후 데이터셋 리스트: {self.datasets}")  # 🔍 확인
+            # print(f"[DEBUG] 추가 후 classifiers 개수: {len(self.classifiers)}")
 
     def set_dataset(self, dataset):
         """활성화할 데이터셋의 분류기를 변경"""
