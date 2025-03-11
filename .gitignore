@@ -1,5 +1,5 @@
 packnet_models/__pycache__/*
-packnet_models_pickaback/*
+packnet_models_pickaback/__pycache__/*
 utils/__pycache__/*
 utils_pickaback/*
 checkpoints_perceiver/*

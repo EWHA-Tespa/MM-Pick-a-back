@@ -23,14 +23,17 @@ PRUNING_RATIO_INTERVAL=0.1
 LR_MASK=1e-4
 TOTAL_NUM_TASKS=5
 
-task_id=12
-target_id=14
+task_id=4 # backbone
+target_id=9 
 seed=2
+
+echo "task_id=$task_id, target_id=$target_id"
 
 version_name='CPG_fromsingle_scratch_woexp_target'
 single_version_name='CPG_single_scratch_woexp'
 baseline_file="logs_${ARCH}/baseline_${DATASET_CONFIG}_acc.txt"
 checkpoints_name="checkpoints_${ARCH}"
+PICKABACK_CSV="checkpoints_${arch}/${DATASET_CONFIG}/pickaback_result.csv"
 
 ####################
 ##### Training #####
