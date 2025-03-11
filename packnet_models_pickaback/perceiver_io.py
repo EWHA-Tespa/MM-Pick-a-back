@@ -2,6 +2,7 @@ import torch
 from torch import nn, einsum
 import torch.nn.functional as F
 from einops import rearrange, repeat
+from einops.layers.torch import Reduce
 
 # helpers
 
@@ -61,19 +62,21 @@ class GEGLU(nn.Module):
         return x * F.gelu(gates)
 
 class FeedForward(nn.Module):
-    def __init__(self, dim, mult=4):
+    def __init__(self, dim, mult=4, dropout=0.3):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(dim, dim * mult * 2),
             GEGLU(),
-            nn.Linear(dim * mult, dim)
+            nn.Dropout(dropout),
+            nn.Linear(dim * mult, dim),
+            nn.Dropout(dropout)
         )
 
     def forward(self, x):
         return self.net(x)
 
 class Attention(nn.Module):
-    def __init__(self, query_dim, context_dim=None, heads=8, dim_head=64):
+    def __init__(self, query_dim, context_dim=None, heads=8, dim_head=64, dropout=0.2):
         super().__init__()
         inner_dim = dim_head * heads
         context_dim = default(context_dim, query_dim)
@@ -82,6 +85,8 @@ class Attention(nn.Module):
 
         self.to_q = nn.Linear(query_dim, inner_dim, bias=False)
         self.to_kv = nn.Linear(context_dim, inner_dim * 2, bias=False)
+
+        self.dropout = nn.Dropout(dropout)
         self.to_out = nn.Linear(inner_dim, query_dim)
 
     def forward(self, x, context=None, mask=None):
@@ -96,6 +101,7 @@ class Attention(nn.Module):
         sim = einsum('b i d, b j d -> b i j', q, k) * self.scale
 
         attn = sim.softmax(dim=-1)
+        attn = self.dropout(attn)
         out = einsum('b i j, b j d -> b i d', attn, v)
         out = rearrange(out, '(b h) n d -> b n (h d)', h=h)
         return self.to_out(out)
@@ -116,7 +122,12 @@ class PerceiverIO(nn.Module):
         latent_heads=8,
         cross_dim_head=64,
         latent_dim_head=64,
+        num_classes=1000,
+        final_classifier_head=True,
+        init_weights=True,
         weight_tie_layers=False,
+        attn_dropout = 0.,
+        ff_dropout = 0.,
         decoder_ff=False,
         seq_dropout_prob = 0.,
     ):
@@ -129,23 +140,32 @@ class PerceiverIO(nn.Module):
 
         self.latents = nn.Parameter(torch.randn(num_latents, latent_dim))
         self.input_proj = nn.Linear(3, dim)
+        self.proj = nn.Linear(latent_dim, 84)
         self.cross_attend_blocks = nn.ModuleList([
-            PreNorm(latent_dim, Attention(latent_dim, dim, heads=cross_heads, dim_head=cross_dim_head), context_dim=dim),
-            PreNorm(latent_dim, FeedForward(latent_dim))
+            PreNorm(latent_dim, Attention(latent_dim, dim, heads=cross_heads, dim_head=cross_dim_head, dropout=attn_dropout), context_dim=dim),
+            PreNorm(latent_dim, FeedForward(latent_dim, dropout=ff_dropout))
         ])
 
         self.layers = nn.ModuleList([])
         for _ in range(depth):
             self.layers.append(nn.ModuleList([
-                PreNorm(latent_dim, Attention(latent_dim, heads=latent_heads, dim_head=latent_dim_head)),
+                PreNorm(latent_dim, Attention(latent_dim, heads=latent_heads, dim_head=latent_dim_head, dropout=attn_dropout)),
                 PreNorm(latent_dim, FeedForward(latent_dim))
             ]))
 
-        self.decoder_cross_attn = PreNorm(queries_dim, Attention(queries_dim, latent_dim, heads=cross_heads, dim_head=cross_dim_head), context_dim=latent_dim)
-        self.decoder_ff = PreNorm(queries_dim, FeedForward(queries_dim)) if decoder_ff else None
+        self.decoder_cross_attn = PreNorm(queries_dim, Attention(queries_dim, latent_dim, heads=cross_heads, dim_head=cross_dim_head, dropout=attn_dropout), context_dim=latent_dim)
+        self.decoder_ff = PreNorm(queries_dim, FeedForward(queries_dim, dropout=ff_dropout)) if decoder_ff else None
 
-        self.proj = nn.Linear(latent_dim, 84)
-        self._reconstruct_classifiers()
+        self.to_logits = nn.Sequential(
+            Reduce('b n d -> b d', 'mean'),
+            nn.LayerNorm(latent_dim),
+            nn.Linear(latent_dim, num_classes)
+        ) if final_classifier_head else nn.Identity()
+
+        if init_weights:
+            self._initialize_weights()
+        if self.datasets:
+            self._reconstruct_classifiers()
 
     def forward(self, data, mask=None, queries=None):
         if data.ndim == 4:
@@ -168,15 +188,26 @@ class PerceiverIO(nn.Module):
             x = self_ff(x) + x
 
         if not exists(queries):
-            features = self.proj(x.mean(dim=1))
-            return self.classifier(features)
+            if isinstance(self.to_logits, nn.Identity):
+                features = x.mean(dim=1)
+                features = self.proj(features)
+                return self.classifier(features)
+            else:
+                return self.to_logits(x)
 
-        latents = self.decoder_cross_attn(queries, context=x)
+        # latents = self.decoder_cross_attn(queries, context=x)
 
-        if exists(self.decoder_ff):
-            latents = latents + self.decoder_ff(latents)
+        # if exists(self.decoder_ff):
+        #     latents = latents + self.decoder_ff(latents)
 
-        return self.to_logits(latents)
+        # return self.to_logits(x)
+    
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
 
     def _reconstruct_classifiers(self):
         for dataset, num_classes in self.dataset2num_classes.items():
@@ -191,8 +222,8 @@ class PerceiverIO(nn.Module):
             self.dataset2num_classes[dataset] = num_classes
             classifier = nn.Linear(84, num_classes)
             self.classifiers.append(classifier)
-            nn.init.xavier_uniform_(classifier.weight)  # 가중치 초기화
-            nn.init.constant_(classifier.bias, 0)
+            nn.init.normal_(self.classifiers[self.datasets.index(dataset)].weight, 0, 0.01)  # 가중치 초기화
+            nn.init.constant_(self.classifiers[self.datasets.index(dataset)].bias, 0)
 
     def set_dataset(self, dataset):
         """활성화할 데이터셋의 분류기를 변경"""
