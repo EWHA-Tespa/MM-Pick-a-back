@@ -203,7 +203,23 @@ def main():
                                     final_classifier_head=False,
                                     dataset_history=dataset_history,
                                     dataset2num_classes=dataset2num_classes)
-            
+    elif args.arch == 'perceiver_io':
+        perceiver_class = packnet_models.perceiver_io.PerceiverIO  
+        model = perceiver_class(
+            depth=4,
+            dim=512, 
+            queries_dim=512, 
+            dataset_history=dataset_history, 
+            dataset2num_classes=dataset2num_classes, 
+            num_latents=256,
+            latent_dim=512,
+            cross_heads=1,
+            latent_heads=8,
+            cross_dim_head=64,
+            latent_dim_head=64,
+            weight_tie_layers=False,
+            decoder_ff=True
+        )
     else:
         print('Error!')
         sys.exit(0)

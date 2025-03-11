@@ -254,6 +254,9 @@ def main():
                                     final_classifier_head=False,
                                     dataset_history=dataset_history,
                                     dataset2num_classes=dataset2num_classes)
+    elif args.arch == 'perceiver_io':
+        model_class = getattr(models.perceiver_io, "PerceiverIO", None)
+        model = model_class(depth=4, dim=512, queries_dim=512, num_latents=256, latent_dim=512, cross_heads=1, latent_heads=8, cross_dim_head=64, latent_dim_head=64, init_weights=True, datasets=True, weight_tie_layers=False, decoder_ff=True, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
     else:
         print('Error!')
         sys.exit(1)
@@ -354,7 +357,7 @@ def main():
                             mask = mask.cuda()
                         mask[:, :].copy_(masks[name][:mask.size(0), :mask.size(1)])
                         masks[name] = mask
-
+    
     if args.dataset not in shared_layer_info:
         shared_layer_info[args.dataset] = {
             'bias': {},
@@ -416,6 +419,10 @@ def main():
     masks_to_optimize_via_Adam = []
     named_of_masks_to_optimize_via_Adam = []
 
+    for name, param in model.named_parameters():
+         print(f"[DEBUG] {name}: mean={param.mean().item():.6f}, std={param.std().item():.6f}")
+        
+
     for name, param in named_params.items():
         if 'classifiers' in name:
             if '.{}.'.format(model.datasets.index(args.dataset)) in name:
@@ -443,6 +450,7 @@ def main():
     curr_lrs = []
     for optimizer in optimizers:
         for param_group in optimizer.param_groups:
+            print(f"[DEBUG] LR: {param_group['lr']}")
             curr_lrs.append(param_group['lr'])
             break
 
@@ -489,6 +497,7 @@ def main():
     for epoch_idx in range(start_epoch, args.epochs):
         avg_train_acc, curr_prune_step = manager.train(optimizers, epoch_idx, curr_lrs, curr_prune_step)
         avg_val_acc = manager.validate(epoch_idx)
+
         csv_wr.writerow([epoch_idx, avg_val_acc, avg_train_acc])
 
         if args.finetune_again:

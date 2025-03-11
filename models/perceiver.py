@@ -5,16 +5,14 @@ import torch
 from torch import nn, einsum
 import torch.nn.functional as F
 
-import models.layers as nl
-
 from einops import rearrange, repeat
 from einops.layers.torch import Reduce
+
+# --- Helper Functions and Classes (unchanged) ---
 
 __all__ = [
     'perceiver'
 ]
-
-# helpers
 
 def exists(val):
     return val is not None
@@ -146,11 +144,10 @@ class perceiver(nn.Module):
         num_classes = 1000,
         attn_dropout = 0.,
         ff_dropout = 0.,
-        mode = 'Shared',
         weight_tie_layers = False,
         fourier_encode_data = True,
         self_per_cross_attn = 1,
-        final_classifier_head = True
+        final_classifier_head = True,
     ):
         """The shape of the final attention mechanism will be:
         depth * (cross attention -> self_per_cross_attn * self attention)
@@ -195,8 +192,6 @@ class perceiver(nn.Module):
         input_dim = fourier_channels + input_channels
 
         self.latents = nn.Parameter(torch.randn(num_latents, latent_dim))
-
-
         get_cross_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, input_dim, heads = cross_heads, dim_head = cross_dim_head, dropout = attn_dropout), context_dim = input_dim)
         get_cross_ff = lambda: PreNorm(latent_dim, FeedForward(latent_dim, dropout = ff_dropout))
         get_latent_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, heads = latent_heads, dim_head = latent_dim_head, dropout = attn_dropout))
@@ -225,7 +220,7 @@ class perceiver(nn.Module):
         self.to_logits = nn.Sequential(
             Reduce('b n d -> b d', 'mean'),
             nn.LayerNorm(latent_dim),
-            nl.SharableLinear(latent_dim, num_classes) if mode == 'Shared' else nn.Linear(latent_dim, num_classes),
+            nn.Linear(latent_dim, num_classes)
         ) if final_classifier_head else nn.Identity()
 
         # self.network_width_multiplier = network_width_multiplier
@@ -238,7 +233,7 @@ class perceiver(nn.Module):
         
         if init_weights:
             self._initialize_weights()
-
+    
     def forward(
         self,
         data,
@@ -293,6 +288,21 @@ class perceiver(nn.Module):
             return self.to_logits(x)
         # return self.to_logits(x)
     
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                # nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.constant(m.bias, 0)
+
     def _reconstruct_classifiers(self):
         # reconstruct classifier modules from dataset2num_classes
         for dataset, num_classes in self.dataset2num_classes.items():
@@ -311,7 +321,7 @@ class perceiver(nn.Module):
             # initialize classifier weights
             nn.init.normal_(self.classifiers[self.datasets.index(dataset)].weight, 0, 0.01)
             nn.init.constant_(self.classifiers[self.datasets.index(dataset)].bias, 0)
-    
+
     def set_dataset(self, dataset):
         # assert dataset in self.datasets
         # self.classifiers = self.classifiers[self.datasets.index(dataset)]

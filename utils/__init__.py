@@ -57,8 +57,6 @@ def set_dataset_paths(args):
         args.val_path = '/data_library/n24news/image/test'
         # args.val_path = '/data_library/n24news/caption/test'
 
-
-
 def set_logger(filepath):
     global logger
     logger = logging.getLogger('')

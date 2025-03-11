@@ -57,7 +57,6 @@ from utils_pickaback.dataset import val_loader as val_loader_fn
 import utils_pickaback as utils
 from utils_pickaback.packnet_manager import Manager
 import packnet_models_pickaback as packnet_models
-
 ################################
 # 기본 설정
 ################################
@@ -262,6 +261,10 @@ for task_id in range(start_index, num_classes_in_config):
                                     self_per_cross_attn=1,
                                     final_classifier_head=False,
                                     dataset_history=dataset_history2, dataset2num_classes=dataset2num_classes2)
+    elif arch == 'perceiver_io':
+        perceiverIO_class = packnet_models.perceiver_io.PerceiverIO  
+        model = perceiverIO_class(depth=4, dim=512, queries_dim=512, num_latents=256, latent_dim=512, cross_heads=1, latent_heads=8, cross_dim_head=64, latent_dim_head=64, weight_tie_layers=False, decoder_ff=True, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
+        model2 = perceiverIO_class(depth=4, dim=512, queries_dim=512, num_latents=256, latent_dim=512, cross_heads=1, latent_heads=8, cross_dim_head=64, latent_dim_head=64, weight_tie_layers=False, decoder_ff=True, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
     else:
         print('Error!')
         sys.exit(0)
