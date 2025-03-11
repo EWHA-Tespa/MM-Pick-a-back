@@ -38,7 +38,7 @@ config_file = "utils/dataset_config.yaml"
 with open(config_file, "r") as f:
     config = yaml.safe_load(f)
 
-# args.dataset_config는 실제로는 dataset_config.yaml에 존재하는 키 이름입니다.
+# args.dataset_config는 실제로는 dataset_config.yaml에 존재하는 키 이름
 dataset_config = config.get(args.dataset_config)
 
 # 해당 데이터셋 설정이 존재하는지 확인
@@ -50,10 +50,7 @@ DATASETS = dataset_config["DATASETS"]
 num_classes_in_config = dataset_config["num_classes"]
 
 # cifar100은 인덱스를 1부터, 나머지는 0부터 반복하도록 설정
-if args.dataset_config == "cifar100":
-    start_index = 1
-else:
-    start_index = 0
+start_index = 1
 
 from utils_pickaback.dataset import train_loader as train_loader_fn
 from utils_pickaback.dataset import val_loader as val_loader_fn

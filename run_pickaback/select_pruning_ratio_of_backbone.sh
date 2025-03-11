@@ -7,33 +7,36 @@ if [ "$#" -lt 1 ]; then
 fi
 
 DATASET_CONFIG=$1
-TASK_ID=12  
-TARGET_TASK_ID=1
 
-DATASET=$(python3 get_dataset_name.py $DATASET_CONFIG $TASK_ID)
+for TASK_ID in {1..6}; do
+    # TARGET_TASK_ID=1
 
-GPU_ID=0
-arch='perceiver'
-FINETUNE_EPOCHS=100
-NUM_CLASSES=-1   
-INIT_LR=1e-2
-PRUNING_LR=1e-3
-LR_MASK=1e-4
-NETWORK_WIDTH_MULTIPLIER=1.0
-MAX_NETWORK_WIDTH_MULTIPLIER=1.0
-PRUNING_RATIO_INTERVAL=0.1
-TOTAL_NUM_TASKS=5
-seed=2
+    # 각 TASK_ID에 맞는 데이터셋 이름을 가져옴
+    DATASET=$(python3 get_dataset_name.py $DATASET_CONFIG $TASK_ID)
 
-VERSION_NAME='CPG_single_scratch_woexp'
-CHECKPOINTS_NAME="checkpoints_${ARCH}"
-BASELINE_FILE="logs_${ARCH}/baseline_${DATASET_CONFIG}_acc.txt"
+    GPU_ID=0
+    arch='perceiver'
+    FINETUNE_EPOCHS=100
+    NUM_CLASSES=-1   
+    INIT_LR=1e-2
+    PRUNING_LR=1e-3
+    LR_MASK=1e-4
+    NETWORK_WIDTH_MULTIPLIER=1.0
+    MAX_NETWORK_WIDTH_MULTIPLIER=1.0
+    PRUNING_RATIO_INTERVAL=0.1
+    TOTAL_NUM_TASKS=5
+    seed=2
 
-python3 tools/choose_appropriate_pruning_ratio_for_next_task_notrmfiles.py \
-    --pruning_ratio_to_acc_record_file ${CHECKPOINTS_NAME}/${VERSION_NAME}/$ARCH/${DATASET}/gradual_prune/record.txt \
-    --baseline_acc_file $BASELINE_FILE \
-    --allow_acc_loss 0.001 \
-    --dataset $DATASET \
-    --network_width_multiplier $NETWORK_WIDTH_MULTIPLIER \
-    --max_allowed_network_width_multiplier $MAX_NETWORK_WIDTH_MULTIPLIER \
-    --log_path ${CHECKPOINTS_NAME}/${VERSION_NAME}/$ARCH/${DATASET}/train.log
+    VERSION_NAME='CPG_single_scratch_woexp'
+    CHECKPOINTS_NAME="checkpoints_${arch}"
+    BASELINE_FILE="logs_${arch}/baseline_${DATASET_CONFIG}_acc.txt"
+
+    python3 tools/choose_appropriate_pruning_ratio_for_next_task_notrmfiles.py \
+        --pruning_ratio_to_acc_record_file ${CHECKPOINTS_NAME}/${VERSION_NAME}/${arch}/${DATASET_CONFIG}/${DATASET}/gradual_prune/record.txt \
+        --baseline_acc_file $BASELINE_FILE \
+        --allow_acc_loss 0.001 \
+        --dataset $DATASET \
+        --network_width_multiplier $NETWORK_WIDTH_MULTIPLIER \
+        --max_allowed_network_width_multiplier $MAX_NETWORK_WIDTH_MULTIPLIER \
+        --log_path ${CHECKPOINTS_NAME}/${VERSION_NAME}/${arch}/${DATASET_CONFIG}/${DATASET}/train.log
+done
