@@ -49,7 +49,6 @@ if not dataset_config:
 DATASETS = dataset_config["DATASETS"]
 num_classes_in_config = dataset_config["num_classes"]
 
-# cifar100은 인덱스를 1부터, 나머지는 0부터 반복하도록 설정
 start_index = 1
 
 from utils_pickaback.dataset import train_loader as train_loader_fn
