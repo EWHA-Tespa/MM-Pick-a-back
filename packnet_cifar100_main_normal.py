@@ -63,7 +63,7 @@ parser.add_argument('--num_classes', type=int, default=-1,
 
 parser.add_argument('--lr', type=float, default=0.1,
                    help='Learning rate for parameters, used for baselines')
-parser.add_argument('--batch_size', type=int, default=8,
+parser.add_argument('--batch_size', type=int, default=32,
                    help='input batch size for training')
 parser.add_argument('--val_batch_size', type=int, default=100,
                    help='input batch size for validation')
@@ -73,7 +73,7 @@ parser.add_argument('--weight_decay', type=float, default=4e-5,
 
 parser.add_argument('--dataset', type=str, default='', help='Name of dataset')
 parser.add_argument('--dataset_config', type=str, default='n24news', choices=["cifar100", "n24news", "mscoco", "cub", "oxford"],
-                   help='Dataset configuration key defined in dataset_config.yaml (e.g., cifar100, n24news)')
+                   help='Dataset configuration key defined in dataset_config.yaml')
 
 parser.add_argument('--cuda', action='store_true', default=True,
                    help='use CUDA')
@@ -115,11 +115,14 @@ def main():
     run_name = f'{args.dataset}_{args.arch}_finetune'
     group_name = f'{args.arch}_baseline'
 
+    # args.dataset이 비어있지 않을 때만 태그에 포함
+    wandb_tags = [args.dataset] if args.dataset else []
+
     wandb.init(project='mm-pick-a-back', 
                name=run_name,
                group=group_name,
                config=vars(args),
-               tags=[args.dataset])
+               tags=wandb_tags)
 
     if args.save_folder and not os.path.isdir(args.save_folder):
         os.makedirs(args.save_folder)
@@ -198,10 +201,6 @@ def main():
                                     fourier_encode_data=True,
                                     self_per_cross_attn=1,
                                     final_classifier_head=False,
-                                    dataset_history=dataset_history,
-                                    dataset2num_classes=dataset2num_classes)
-    elif args.arch == 'vilt':
-            model = packnet_models.__dict__['vilt'](pretrained=False,
                                     dataset_history=dataset_history,
                                     dataset2num_classes=dataset2num_classes)
             

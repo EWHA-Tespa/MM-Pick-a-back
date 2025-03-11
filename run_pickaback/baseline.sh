@@ -8,7 +8,7 @@ fi
 
 DATASET_CONFIG=$1
 
-GPU_ID=0
+GPU_ID=2
 ARCH='perceiver'
 FINETUNE_EPOCHS=100
 seed=2
@@ -20,7 +20,7 @@ for TASK_ID in {1..6}; do  # change according to the number of classes in the da
         --arch $ARCH \
         --dataset_config $DATASET_CONFIG \
         --dataset $DATASET \
-        --num_classes 3 \
+        --num_classes -1 \
         --lr 1e-2 \
         --weight_decay 4e-5 \
         --save_folder checkpoints_${ARCH}/baseline_scratch/$ARCH/${DATASET_CONFIG}/${DATASET} \

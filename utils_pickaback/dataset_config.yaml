@@ -77,15 +77,16 @@ cifar100:
     - vehicles_2
 
 n24news:
-  train_path: /data_library/n24news/image/train
-  test_path: /data_library/n24news/image/test
-  subfolder: false
+  train_path: /data/youlee/data_library/n24news/image/train
+  test_path: /data/youlee/data_library/n24news/image/test
+  subfolder: true
   num_classes: 6
   resize: [224, 224] # if arch='lenet', [32,32]
   random_horizontal_flip: true
   mean: [0.485, 0.456, 0.406]
   std: [0.229, 0.224, 0.225]
   DATASETS:
+    - None
     - group1 # "Opinion", "Art_Design", "Television"
     - group2 # "Music", "Travel", "Real_Estate"
     - group3 # "Books", "Theater", "Health"
@@ -102,7 +103,7 @@ mscoco:
   random_horizontal_flip: true
   mean: [0.485, 0.456, 0.406]
   std: [0.229, 0.224, 0.225]
-  DATASETS:
+  DATASETS: 
     - airplane
     - apple
     - backpack
@@ -186,326 +187,58 @@ mscoco:
 
 
 cub:
-  train_path: 
-  test_path: 
-  subfolder: false
-  num_classes: 200
+  train_path: /data/youlee/data_library/cub_200_2011/image/train
+  test_path: /data/youlee/data_library/cub_200_2011/image/test
+  subfolder: true
+  num_classes: 27
   resize: [224, 224]
   random_horizontal_flip: true
   mean: [0.485, 0.456, 0.406]
   std: [0.229, 0.224, 0.225]
   DATASETS:
-    - 001.Black_footed_Albatross
-    - 002.Laysan_Albatross
-    - 003.Sooty_Albatross
-    - 004.Groove_billed_Ani
-    - 005.Crested_Auklet
-    - 006.Least_Auklet
-    - 007.Parakeet_Auklet
-    - 008.Rhinoceros_Auklet
-    - 009.Brewer_Blackbird
-    - 010.Red_winged_Blackbird
-    - 011.Rusty_Blackbird
-    - 012.Yellow_headed_Blackbird
-    - 013.Bobolink
-    - 014.Indigo_Bunting
-    - 015.Lazuli_Bunting
-    - 016.Painted_Bunting
-    - 017.Cardinal
-    - 018.Spotted_Catbird
-    - 019.Gray_Catbird
-    - 020.Yellow_breasted_Chat
-    - 021.Eastern_Towhee
-    - 022.Chuck_will_Widow
-    - 023.Brandt_Cormorant
-    - 024.Red_faced_Cormorant
-    - 025.Pelagic_Cormorant
-    - 026.Bronzed_Cowbird
-    - 027.Shiny_Cowbird
-    - 028.Brown_Creeper
-    - 029.American_Crow
-    - 030.Fish_Crow
-    - 031.Black_billed_Cuckoo
-    - 032.Mangrove_Cuckoo
-    - 033.Yellow_billed_Cuckoo
-    - 034.Gray_crowned_Rosy_Finch
-    - 035.Purple_Finch
-    - 036.Northern_Flicker
-    - 037.Acadian_Flycatcher
-    - 038.Great_Crested_Flycatcher
-    - 039.Least_Flycatcher
-    - 040.Olive_sided_Flycatcher
-    - 041.Scissor_tailed_Flycatcher
-    - 042.Vermilion_Flycatcher
-    - 043.Yellow_bellied_Flycatcher
-    - 044.Frigatebird
-    - 045.Northern_Fulmar
-    - 046.Gadwall
-    - 047.American_Goldfinch
-    - 048.European_Goldfinch
-    - 049.Boat_tailed_Grackle
-    - 050.Eared_Grebe
-    - 051.Horned_Grebe
-    - 052.Pied_billed_Grebe
-    - 053.Western_Grebe
-    - 054.Blue_Grosbeak
-    - 055.Evening_Grosbeak
-    - 056.Pine_Grosbeak
-    - 057.Rose_breasted_Grosbeak
-    - 058.Pigeon_Guillemot
-    - 059.California_Gull
-    - 060.Glaucous_winged_Gull
-    - 061.Heermann_Gull
-    - 062.Herring_Gull
-    - 063.Ivory_Gull
-    - 064.Ring_billed_Gull
-    - 065.Slaty_backed_Gull
-    - 066.Western_Gull
-    - 067.Anna_Hummingbird
-    - 068.Ruby_throated_Hummingbird
-    - 069.Rufous_Hummingbird
-    - 070.Green_Violetear
-    - 071.Long_tailed_Jaeger
-    - 072.Pomarine_Jaeger
-    - 073.Blue_Jay
-    - 074.Florida_Jay
-    - 075.Green_Jay
-    - 076.Dark_eyed_Junco
-    - 077.Tropical_Kingbird
-    - 078.Gray_Kingbird
-    - 079.Belted_Kingfisher
-    - 080.Green_Kingfisher
-    - 081.Pied_Kingfisher
-    - 082.Ringed_Kingfisher
-    - 083.White_breasted_Kingfisher
-    - 084.Red_legged_Kittiwake
-    - 085.Horned_Lark
-    - 086.Pacific_Loon
-    - 087.Common_Loon
-    - 088.White_necked_Raven
-    - 089.Philadelphia_Vireo
-    - 090.Warbling_Vireo
-    - 091.White_eyed_Vireo
-    - 092.Yellow_throated_Vireo
-    - 093.Bay_breasted_Warbler
-    - 094.Black_and_white_Warbler
-    - 095.Black_throated_Blue_Warbler
-    - 096.Blue_winged_Warbler
-    - 097.Canada_Warbler
-    - 098.Cape_May_Warbler
-    - 099.Cerulean_Warbler
-    - 100.Chestnut_sided_Warbler
-    - 101.Golden_winged_Warbler
-    - 102.Hooded_Warbler
-    - 103.Kentucky_Warbler
-    - 104.Magnolia_Warbler
-    - 105.Mourning_Warbler
-    - 106.Myrtle_Warbler
-    - 107.Nashville_Warbler
-    - 108.Orange_crowned_Warbler
-    - 109.Palm_Warbler
-    - 110.Pine_Warbler
-    - 111.Prairie_Warbler
-    - 112.Prothonotary_Warbler
-    - 113.Swainson_Warbler
-    - 114.Tennessee_Warbler
-    - 115.Wilson_Warbler
-    - 116.Worm_eating_Warbler
-    - 117.Yellow_Warbler
-    - 118.Northern_Waterthrush
-    - 119.Louisiana_Waterthrush
-    - 120.Bohemian_Waxwing
-    - 121.Cedar_Waxwing
-    - 122.American_Three_toed_Woodpecker
-    - 123.Pileated_Woodpecker
-    - 124.Red_bellied_Woodpecker
-    - 125.Red_cockaded_Woodpecker
-    - 126.Red_headed_Woodpecker
-    - 127.Downy_Woodpecker
-    - 128.Bewick_Wren
-    - 129.Cactus_Wren
-    - 130.Carolina_Wren
-    - 131.House_Wren
-    - 132.Marsh_Wren
-    - 133.Rock_Wren
-    - 134.Winter_Wren
-    - 135.Common_Yellowthroat
-    - 136.Wilson_Snipe
-    - 137.American_White_Pelican
-    - 138.Brown_Pelican
-    - 139.White_Pelican
-    - 140.Scarlet_Tanager
-    - 141.Summer_Tanager
-    - 142.Western_Tanager
-    - 143.Northern_Shrike
-    - 144.Loggerhead_Shrike
-    - 145.Baltimore_Oriole
-    - 146.Orchard_Oriole
-    - 147.Hooded_Oriole
-    - 148.Bullock_Oriole
-    - 149.House_Finch
-    - 150.Purple_Martin
-    - 151.Tree_Swallow
-    - 152.Barn_Swallow
-    - 153.Whip_poor_Will
-    - 154.Yellow_billed_Loon
-    - 155.Common_Murre
-    - 156.Thick_billed_Murre
-    - 157.Bobwhite
-    - 158.Ring_necked_Pheasant
-    - 159.Ruffed_Grouse
-    - 160.Sage_Grouse
-    - 161.Sharp_tailed_Grouse
-    - 162.Wild_Turkey
-    - 163.Bald_Eagle
-    - 164.Golden_Eagle
-    - 165.Marsh_Hawk
-    - 166.Cooper_Hawk
-    - 167.Red_tailed_Hawk
-    - 168.Rough_legged_Hawk
-    - 169.Ferruginous_Hawk
-    - 170.American_Kestrel
-    - 171.Merlin
-    - 172.Peregrine_Falcon
-    - 173.Prairie_Falcon
-    - 174.Great_Horned_Owl
-    - 175.Snowy_Owl
-    - 176.Barred_Owl
-    - 177.Great_Grey_Owl
-    - 178.Northern_Hawk_Owl
-    - 179.Long_eared_Owl
-    - 180.Short_eared_Owl
-    - 181.Boreal_Owl
-    - 182.Northern_Saw_whet_Owl
-    - 183.Belted_Kingfisher
-    - 184.Roadrunner
-    - 185.Common_Poorwill
-    - 186.Chimney_Swift
-    - 187.Ruby_throated_Hummingbird
-    - 188.Rufous_Hummingbird
-    - 189.Green_Violetear
-    - 190.Western_Scrub_Jay
-    - 191.American_Magpie
-    - 192.Clark_Nutcracker
-    - 193.House_Sparrow
-    - 194.Evening_Grosbeak
-    - 195.Black_capped_Chickadee
-    - 196.Mountain_Chickadee
-    - 197.Tufted_Titmouse
-    - 198.White_breasted_Nuthatch
-    - 199.Red_breasted_Nuthatch
-    - 200.Brown_Creeper
-
+    - None
+    - group1 # '001.Black_footed_Albatross', '002.Laysan_Albatross', '004.Groove_billed_Ani', '009.Brewer_Blackbird', '010.Red_winged_Blackbird'
+    - group2 # '011.Rusty_Blackbird', '013.Bobolink', '014.Indigo_Bunting', '021.Eastern_Towhee', '026.Bronzed_Cowbird'
+    - group3 # '027.Shiny_Cowbird', '029.American_Crow', '030.Fish_Crow', '031.Black_billed_Cuckoo', '035.Purple_Finch'
+    - group4 # '036.Northern_Flicker', '038.Great_Crested_Flycatcher', '040.Olive_sided_Flycatcher', '041.Scissor_tailed_Flycatcher', '042.Vermilion_Flycatcher'
+    - group5 # '044.Frigatebird', '045.Northern_Fulmar', '046.Gadwall', '047.American_Goldfinch', '048.European_Goldfinch'
+    - group6 # '049.Boat_tailed_Grackle', '050.Eared_Grebe', '051.Horned_Grebe', '052.Pied_billed_Grebe', '053.Western_Grebe'
+    - group7 # '054.Blue_Grosbeak', '055.Evening_Grosbeak', '056.Pine_Grosbeak', '057.Rose_breasted_Grosbeak', '059.California_Gull'
+    - group8 # '061.Heermann_Gull', '062.Herring_Gull', '064.Ring_billed_Gull', '067.Anna_Hummingbird', '068.Ruby_throated_Hummingbird'
+    - group9 # '069.Rufous_Hummingbird', '070.Green_Violetear', '071.Long_tailed_Jaeger', '072.Pomarine_Jaeger', '073.Blue_Jay'
+    - group10 # '074.Florida_Jay', '076.Dark_eyed_Junco', '077.Tropical_Kingbird', '079.Belted_Kingfisher', '080.Green_Kingfisher'
+    - group11 # '081.Pied_Kingfisher', '082.Ringed_Kingfisher', '083.White_breasted_Kingfisher', '085.Horned_Lark', '086.Pacific_Loon'
+    - group12 # '088.Western_Meadowlark', '089.Hooded_Merganser', '090.Red_breasted_Merganser', '091.Mockingbird', '092.Nighthawk'
+    - group13 # '094.White_breasted_Nuthatch', '095.Baltimore_Oriole', '096.Hooded_Oriole', '098.Scott_Oriole', '099.Ovenbird'
+    - group14 # '100.Brown_Pelican', '102.Western_Wood_Pewee', '103.Sayornis', '104.American_Pipit', '106.Horned_Puffin'
+    - group15 # '109.American_Redstart', '110.Geococcyx', '111.Loggerhead_Shrike', '112.Great_Grey_Shrike', '114.Black_throated_Sparrow'
+    - group16 # '116.Chipping_Sparrow', '118.House_Sparrow', '120.Fox_Sparrow', '121.Grasshopper_Sparrow', '122.Harris_Sparrow'
+    - group17 # '123.Henslow_Sparrow', '127.Savannah_Sparrow', '128.Seaside_Sparrow', '129.Song_Sparrow', '130.Tree_Sparrow'
+    - group18 # '131.Vesper_Sparrow', '132.White_crowned_Sparrow', '133.White_throated_Sparrow', '134.Cape_Glossy_Starling', '136.Barn_Swallow'
+    - group19 # '137.Cliff_Swallow', '138.Tree_Swallow', '139.Scarlet_Tanager', '140.Summer_Tanager', '142.Black_Tern'
+    - group20 # '143.Caspian_Tern', '144.Common_Tern', '145.Elegant_Tern', '146.Forsters_Tern', '147.Least_Tern'
+    - group21 # '148.Green_tailed_Towhee', '150.Sage_Thrasher', '152.Blue_headed_Vireo', '154.Red_eyed_Vireo', '155.Warbling_Vireo'
+    - group22 # '156.White_eyed_Vireo', '158.Bay_breasted_Warbler', '159.Black_and_white_Warbler', '161.Blue_winged_Warbler', '162.Canada_Warbler'
+    - group23 # '163.Cape_May_Warbler', '164.Cerulean_Warbler', '165.Chestnut_sided_Warbler', '167.Hooded_Warbler', '170.Mourning_Warbler'
+    - group24 # '171.Myrtle_Warbler', '172.Nashville_Warbler', '173.Orange_crowned_Warbler', '174.Palm_Warbler', '175.Pine_Warbler'
+    - group25 # '176.Prairie_Warbler', '177.Prothonotary_Warbler', '180.Wilson_Warbler', '182.Yellow_Warbler', '183.Northern_Waterthrush'
+    - group26 # '184.Louisiana_Waterthrush', '185.Bohemian_Waxwing', '186.Cedar_Waxwing', '188.Pileated_Woodpecker', '189.Red_bellied_Woodpecker'
+    - group27 # '191.Red_headed_Woodpecker', '192.Downy_Woodpecker', '193.Bewick_Wren', '194.Cactus_Wren', '195.Carolina_Wren'
 
 oxford: 
-  train_path: 
-  test_path:
-  subfolder: false
-  num_classes: 102
+  train_path: /data/youlee/data_library/oxford_102_flowers/image/train
+  test_path: /data/youlee/data_library/oxford_102_flowers/image/test
+  subfolder: true
+  num_classes: 6
   resize: [224, 224]
   random_horizontal_flip: true
   mean: [0.485, 0.456, 0.406]
   std: [0.229, 0.224, 0.225]
   DATASETS:
-    - class_00001
-    - class_00002
-    - class_00003
-    - class_00004
-    - class_00005
-    - class_00006
-    - class_00007
-    - class_00008
-    - class_00009
-    - class_00010
-    - class_00011
-    - class_00012
-    - class_00013
-    - class_00014
-    - class_00015
-    - class_00016
-    - class_00017
-    - class_00018
-    - class_00019
-    - class_00020
-    - class_00021
-    - class_00022
-    - class_00023
-    - class_00024
-    - class_00025
-    - class_00026
-    - class_00027
-    - class_00028
-    - class_00029
-    - class_00030
-    - class_00031
-    - class_00032
-    - class_00033
-    - class_00034
-    - class_00035
-    - class_00036
-    - class_00037
-    - class_00038
-    - class_00039
-    - class_00040
-    - class_00041
-    - class_00042
-    - class_00043
-    - class_00044
-    - class_00045
-    - class_00046
-    - class_00047
-    - class_00048
-    - class_00049
-    - class_00050
-    - class_00051
-    - class_00052
-    - class_00053
-    - class_00054
-    - class_00055
-    - class_00056
-    - class_00057
-    - class_00058
-    - class_00059
-    - class_00060
-    - class_00061
-    - class_00062
-    - class_00063
-    - class_00064
-    - class_00065
-    - class_00066
-    - class_00067
-    - class_00068
-    - class_00069
-    - class_00070
-    - class_00071
-    - class_00072
-    - class_00073
-    - class_00074
-    - class_00075
-    - class_00076
-    - class_00077
-    - class_00078
-    - class_00079
-    - class_00080
-    - class_00081
-    - class_00082
-    - class_00083
-    - class_00084
-    - class_00085
-    - class_00086
-    - class_00087
-    - class_00088
-    - class_00089
-    - class_00090
-    - class_00091
-    - class_00092
-    - class_00093
-    - class_00094
-    - class_00095
-    - class_00096
-    - class_00097
-    - class_00098
-    - class_00099
-    - class_00100
-    - class_00101
-    - class_00102
+    - None
+    - group1 # "class_00051", "class_00072", "class_00082", "class_00060"
+    - group2 # "class_00077", "class_00065", "class_00058", "class_00056"
+    - group3 # "class_00046", "class_00074", "class_00037", "class_00080"
+    - group4 # "class_00073", "class_00041", "class_00083", "class_00095"
+    - group5 # "class_00089", "class_00081", "class_00075", "class_00076"
+    - group6 # "class_00094", "class_00088", "class_00078", "class_00043"
