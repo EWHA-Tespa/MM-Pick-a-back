@@ -46,7 +46,7 @@ lr_mask=1e-4
 total_num_tasks=5
 
 seed=2
-task_id=4
+task_id=20
 
 version_name='CPG_single_scratch_woexp'
 checkpoints_name='checkpoints_'$arch

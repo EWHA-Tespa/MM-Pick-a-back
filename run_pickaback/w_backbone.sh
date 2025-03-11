@@ -48,7 +48,7 @@ pruning_ratio_interval=0.1
 lr_mask=1e-4
 total_num_tasks=5
 
-task_id=4
+task_id=20
 target_id=14
 seed=2
 

@@ -47,7 +47,7 @@ max_network_width_multiplier=1.0
 pruning_ratio_interval=0.1
 lr_mask=1e-4
 
-task_id=4
+task_id=20
 
 version_name='CPG_single_scratch_woexp' ##### CHANGE #####
 baseline_file='logs_'$arch'/baseline_cifar100_acc_scratch.txt' #### CHANGE #####
