@@ -55,7 +55,7 @@ baseline_file='logs_'$arch'/baseline_cifar100_acc_scratch.txt'
 ####################
 ##### Training #####
 ####################
-for task_id in {18..20}; do
+for task_id in {17..17}; do
     state=2 
     network_width_multiplier=$base_network_width_multiplier
     echo "======Task ${task_id} Train & Prune Start======"
