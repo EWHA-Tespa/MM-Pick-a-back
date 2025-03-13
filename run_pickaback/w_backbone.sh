@@ -48,14 +48,14 @@ pruning_ratio_interval=0.1
 lr_mask=1e-4
 total_num_tasks=5
 
-task_id=20
-target_id=14
+task_id=15
+target_id=20
 seed=2
 
 version_name='CPG_fromsingle_scratch_woexp_target'
 single_version_name='CPG_single_scratch_woexp'
-baseline_file='logs_perceiver_io/baseline_cifar100_acc_scratch.txt'
-checkpoints_name='checkpoints_perceiver_io'
+baseline_file="logs_${arch}/baseline_cifar100_acc_scratch.txt"
+checkpoints_name="checkpoints_${arch}"
 
 ####################
 ##### Training #####
@@ -93,6 +93,10 @@ while [ $state -eq 2 ]; do
     elif [ $state -eq 3 ]
     then
         echo "You should provide the baseline_cifar100_acc.txt as criterion to decide whether the capacity of network is enough for new task"
+        exit 0
+    elif [ $state -eq 5 ]
+    then
+        echo "No more space left for expansion. Exiting..."
         exit 0
     fi
 done

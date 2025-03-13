@@ -35,7 +35,7 @@ seed=2
 ####################
 TASK_ID=4
 
-for TASK_ID in {3..20}; do
+for TASK_ID in {17..20}; do
 CUDA_VISIBLE_DEVICES=$GPU_ID python3 packnet_cifar100_main_normal.py \
     --arch $ARCH \
     --dataset ${DATASETS[TASK_ID]} --num_classes 5 \
