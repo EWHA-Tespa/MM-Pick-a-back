@@ -5,3 +5,6 @@ checkpoints_perceiver/baseline_scratch/perceiver/*
 checkpoints_perceiver/baseline_scratch/perceiver/food_containers/checkpoint*
 checkpoints_perceiver_io/
 wandb/
+models/*
+packnet_models_pickaback/*
+utils_pickaback/*
