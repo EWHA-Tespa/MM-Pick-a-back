@@ -93,9 +93,14 @@ target_id = args.target_id
 table_rows = []
 ddvcc_list = []
 ddvec_list = []
+tasks = [] 
 
 # Iterate over the datasets
-for task_id in range(start_index, num_classes_in_config):
+for task_id in range(start_index, num_classes_in_config + 1):
+
+    if task_id == target_id:
+        continue
+    
     dataset_name = DATASETS[task_id]
     dataset_name_target = DATASETS[target_id]
     dataset_name_test = DATASETS[task_id]
@@ -392,6 +397,7 @@ for task_id in range(start_index, num_classes_in_config):
 
     score = evaluate_inputs(inputs)
     for iteration in range(max_iterations):
+        
         mutation_pos = np.random.randint(0, ndims)
         mutation = np.zeros(ndims).astype(np.float32)
         mutation[mutation_pos] = epsilon
@@ -467,22 +473,24 @@ for task_id in range(start_index, num_classes_in_config):
     ddv_euc_distance = compute_sim_cos(ddv1, ddv2)
     print('DDV euc-cos [%d => %d] %.5f' % (task_id, target_id, ddv_euc_distance))
     ddvec_list.append(ddv_euc_distance)
+    tasks.append(task_id)  
 
     table_rows.append({
         'target_id': target_id,
-        'task_id': task_id,
+        'task_id': task_id,  # selected_backbone
         'ddv_cos': ddv_cos_distance,
         'ddv_euc': ddv_euc_distance
-    })    
+    })
 
+# ddvec_list에서 최대값의 인덱스를 찾고, 그 인덱스를 tasks 리스트에 적용해 실제 task_id를 얻음
 best_idx = np.argmax(ddvec_list)
-best_task = ddvec_list.index(max(ddvec_list)) + 1
+best_task = tasks[best_idx]
 
 print('Selected backbone for target ' + str(target_id) +
       ' = (euc) ' + str(best_task))
 
-result_csv = 'pickaback_result.csv'
-table_csv = 'pickback_table.csv'
+result_csv = f"pickaback_{args.dataset_config}_result.csv"
+table_csv = f"pickback_{args.dataset_config}_table.csv"
 
 write_header = not os.path.exists(result_csv)
 with open(result_csv, 'a', newline='') as f:

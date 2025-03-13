@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from einops import rearrange, repeat
 from einops.layers.torch import Reduce
 
+import models.layers as nl
 # --- Helper Functions and Classes (unchanged) ---
 
 __all__ = [
