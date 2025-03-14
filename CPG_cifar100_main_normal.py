@@ -138,7 +138,6 @@ parser.add_argument('--progressive_init', action='store_true', default=False, he
 def main():
     """Do stuff."""
     args = parser.parse_args()
-<<<<<<< HEAD
 
     config_path = os.path.join(os.path.dirname(__file__), 'utils', 'dataset_config.yaml')
     with open(config_path, 'r') as f:
@@ -147,12 +146,6 @@ def main():
         # args.dataset_config (예: "cifar100" 또는 "n24news") 섹션에서 num_classes 값을 가져옴
         args.num_classes = config_yaml[args.dataset_config]['num_classes']
 
-||||||| 3c56991
-
-    # Don't use this, neither set learning rate as a linear function
-    # of the count of gpus, it will make accuracy lower
-    # args.batch_size = args.batch_size * torch.cuda.device_count()
-=======
     
     run_name = f'{args.dataset}_{args.arch}_finetune'
     group_name = f'{args.arch}_w_backbone'
@@ -166,7 +159,6 @@ def main():
     # Don't use this, neither set learning rate as a linear function
     # of the count of gpus, it will make accuracy lower
     # args.batch_size = args.batch_size * torch.cuda.device_count()
->>>>>>> perceiver_cifar100
     args.network_width_multiplier = math.sqrt(args.network_width_multiplier)
     args.max_allowed_network_width_multiplier = math.sqrt(args.max_allowed_network_width_multiplier)
     if args.mode == 'prune':
@@ -288,17 +280,9 @@ def main():
     model.add_dataset(model_dataset, args.num_classes)
     model.set_dataset(model_dataset)
     model = model.cuda()
-<<<<<<< HEAD
 
-||||||| 3c56991
-
-    # For datasets whose image_size is 224 and also the first task
-=======
-    
     wandb.watch(model, log='all')
-    
     # For datasets whose image_size is 224 and also the first task
->>>>>>> perceiver_cifar100
     if args.use_imagenet_pretrained:
         curr_model_state_dict = model.state_dict()
         if args.arch == 'custom_vgg':
@@ -529,10 +513,6 @@ def main():
     for epoch_idx in range(start_epoch, args.epochs):
         avg_train_acc, curr_prune_step = manager.train(optimizers, epoch_idx, curr_lrs, curr_prune_step)
         avg_val_acc = manager.validate(epoch_idx)
-<<<<<<< HEAD
-
-||||||| 3c56991
-=======
 
         importances = [param.abs().mean().item() for param in model.parameters() if param.requires_grad]
         avg_weight_importance = np.mean(importances)
@@ -551,7 +531,6 @@ def main():
          "learning_rate": curr_lrs[0]
         }) 
                 
->>>>>>> perceiver_cifar100
         csv_wr.writerow([epoch_idx, avg_val_acc, avg_train_acc])
 
         if args.finetune_again:

@@ -18,13 +18,13 @@ fi
 DATASET_CONFIG=$1
 MODALITY=$2
 
-# GPU_ID=2
+GPU_ID=0
 ARCH='perceiver'
 EXPIREMENT_GROUP='baseline'
 FINETUNE_EPOCHS=100
 seed=2
 
-for TASK_ID in {7..7}; do  # change according to the number of classes in the dataset
+for TASK_ID in {1..15}; do  # change according to the number of classes in the dataset
     DATASET=$(python3 get_dataset_name.py $DATASET_CONFIG $TASK_ID)
     
     CUDA_VISIBLE_DEVICES=$GPU_ID python3 packnet_cifar100_main_normal.py \
