@@ -77,8 +77,10 @@ cifar100:
     - vehicles_2
 
 n24news:
-  train_path: /data/youlee/data_library/n24news/image/train
-  test_path: /data/youlee/data_library/n24news/image/test
+  image_train_path: /data/youlee/data_library/n24news/image/train
+  image_test_path: /data/youlee/data_library/n24news/image/test
+  text_train_path: /data/youlee/data_library/n24news/text/train
+  text_test_path: /data/youlee/data_library/n24news/text/test
   subfolder: true
   num_classes: 6
   resize: [224, 224] # if arch='lenet', [32,32]
@@ -93,6 +95,12 @@ n24news:
     - group4 # "Sports", "Science", "Food"
     - group5 # "Fashion_Style", "Movies", "Technology"
     - group6 # "Dance", "Media", "Style"
+    - group7 # "Opinion", "Art_Design", "Television" -> text from here
+    - group8 # "Music", "Travel", "Real_Estate"
+    - group9 # "Books", "Theater", "Health"
+    - group10 # "Sports", "Science", "Food"
+    - group11 # "Fashion_Style", "Movies", "Technology"
+    - group12 # "Dance", "Media", "Style"
 
 mscoco:
   train_path: /data_library/mscoco/train_processed/image

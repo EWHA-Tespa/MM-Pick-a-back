@@ -3,6 +3,8 @@ import yaml
 import torch
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
+from .textfolder import TextFolder
 
 
 config_path = os.path.join(os.path.dirname(__file__), 'dataset_config.yaml')
@@ -60,23 +62,44 @@ def get_transforms(cfg, dataset_name=None, is_train=True):
         
     return transforms.Compose(transform_list)
 
-
-def train_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_memory=True):
+def train_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_memory=True, tokenizer=None):
     """
-    config_name: 'cifar100' or 'n24news' 등
-    dataset_name: subfolder명 (ex: 'fish', 'flowers'), 없으면 None
+    config_name: 'cifar100', 'n24news', 등
+    dataset_name: 서브폴더 이름 (예: 'group7_text' - 텍스트 데이터의 경우 '_text' 접미사 포함) 또는 None
+    tokenizer: 텍스트 데이터 전처리에 사용할 토크나이저 함수 (예: lambda text: bert_tokenizer(text)['input_ids'])
     """
     cfg = dataset_config[config_name]
-
-    if dataset_name is not None and cfg.get("subfolder", False):
-        train_path = os.path.join(cfg['train_path'], dataset_name)
+    
+    # cifar100은 기존의 ImageFolder 사용
+    if config_name == 'cifar100':
+        if dataset_name is not None and cfg.get("subfolder", False):
+            train_path = os.path.join(cfg['train_path'], dataset_name)
+        else:
+            train_path = cfg['train_path']
+        train_transform = get_transforms(cfg, dataset_name=dataset_name, is_train=True)
+        train_dataset = datasets.ImageFolder(train_path, transform=train_transform)
     else:
-        train_path = cfg['train_path']
+        # n24news와 같이 image와 text가 분리된 경우
+        if dataset_name is not None and dataset_name.endswith("_text"):
+            # 텍스트 데이터인 경우, dataset_name에서 "_text" 접미사를 제거하고 text 경로 사용
+            subfolder_name = dataset_name[:-5]
+            train_path = os.path.join(cfg['text_train_path'], subfolder_name)
+            # tokenizer가 제공되면 transform을 tokenizer 함수로 정의
+            if tokenizer is not None:
+                transform = lambda x: tokenizer(x)['input_ids']
+            else:
+                transform = None
+            train_dataset = TextFolder(train_path, transform=transform)
+        else:
+            # 기본은 이미지 데이터
+            if dataset_name is not None and cfg.get("subfolder", False):
+                train_path = os.path.join(cfg['image_train_path'], dataset_name)
+            else:
+                train_path = cfg['image_train_path']
+            train_transform = get_transforms(cfg, dataset_name=dataset_name, is_train=True)
+            train_dataset = datasets.ImageFolder(train_path, transform=train_transform)
     
-    train_transform = get_transforms(cfg, dataset_name=dataset_name, is_train=True)
-    train_dataset = datasets.ImageFolder(train_path, transform=train_transform)
-    
-    return torch.utils.data.DataLoader(
+    return DataLoader(
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
@@ -84,23 +107,39 @@ def train_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_
         pin_memory=pin_memory
     )
 
-
-def val_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_memory=True):
+def val_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_memory=True, tokenizer=None):
     """
-    config_name: 'cifar100' or 'n24news'
-    dataset_name: subfolder명 (ex: 'fish', 'flowers'), 없으면 None
+    config_name: 'cifar100', 'n24news', 등
+    dataset_name: 서브폴더 이름 (예: 'group7_text' - 텍스트 데이터의 경우 '_text' 접미사 포함) 또는 None
+    tokenizer: 텍스트 데이터 전처리에 사용할 토크나이저 함수
     """
     cfg = dataset_config[config_name]
-
-    if dataset_name is not None and cfg.get("subfolder", False):
-        test_path = os.path.join(cfg['test_path'], dataset_name)
+    
+    if config_name == 'cifar100':
+        if dataset_name is not None and cfg.get("subfolder", False):
+            test_path = os.path.join(cfg['test_path'], dataset_name)
+        else:
+            test_path = cfg['test_path']
+        val_transform = get_transforms(cfg, dataset_name=dataset_name, is_train=False)
+        val_dataset = datasets.ImageFolder(test_path, transform=val_transform)
     else:
-        test_path = cfg['test_path']
+        if dataset_name is not None and dataset_name.endswith("_text"):
+            subfolder_name = dataset_name[:-5]
+            test_path = os.path.join(cfg['text_test_path'], subfolder_name)
+            if tokenizer is not None:
+                transform = lambda x: tokenizer(x)['input_ids']
+            else:
+                transform = None
+            val_dataset = TextFolder(test_path, transform=transform)
+        else:
+            if dataset_name is not None and cfg.get("subfolder", False):
+                test_path = os.path.join(cfg['image_test_path'], dataset_name)
+            else:
+                test_path = cfg['image_test_path']
+            val_transform = get_transforms(cfg, dataset_name=dataset_name, is_train=False)
+            val_dataset = datasets.ImageFolder(test_path, transform=val_transform)
     
-    val_transform = get_transforms(cfg, dataset_name=dataset_name, is_train=False)
-    val_dataset = datasets.ImageFolder(test_path, transform=val_transform)
-    
-    return torch.utils.data.DataLoader(
+    return DataLoader(
         val_dataset,
         batch_size=batch_size,
         shuffle=False,

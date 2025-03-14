@@ -327,3 +327,30 @@ class perceiver(nn.Module):
         """Change the active classifier."""
         assert dataset in self.datasets
         self.classifier = self.classifiers[self.datasets.index(dataset)]
+
+
+class CombinedPerceiver(nn.Module):
+    """
+    - forward: (B, T) -> (B, num_classes)
+    - get_text_latent: (B, T) -> (B, latent_dim)
+    """
+    def __init__(self, vocab_size, embed_dim, perceiver_model):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_dim)
+        self.perceiver = perceiver_model  # Perceiver 모델은 (B, T, embed_dim) 입력을 기대함
+
+    def forward(self, input_ids):
+        # (B, T) -> (B, T, embed_dim)
+        embeddings = self.embedding(input_ids)
+        # Perceiver에 임베딩을 전달하여 최종 분류 결과 도출
+        return self.perceiver(embeddings)
+
+    def get_text_latent(self, input_ids):
+        embeddings = self.embedding(input_ids)
+        return self.perceiver.forward_to_latent(embeddings)
+
+    def add_dataset(self, dataset, num_classes):
+        self.perceiver.add_dataset(dataset, num_classes)
+    
+    def set_dataset(self, dataset):
+        self.perceiver.set_dataset(dataset)

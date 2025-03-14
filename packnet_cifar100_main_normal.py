@@ -58,6 +58,10 @@ warnings.filterwarnings("ignore")
 parser = argparse.ArgumentParser()
 parser.add_argument('--arch', type=str, default='vgg16_bn_cifar100',
                    help='Architectures')
+parser.add_argument('--modality', type=str, default='image', choices=['image', 'text'],
+                    help='Specify the modality: image or text')
+parser.add_argument('--experiment_group', type=str, default='baseline', choices=['baseline', 'backbone'],
+                    help='Weights & Biases group')
 parser.add_argument('--num_classes', type=int, default=-1,
                    help='Num outputs for dataset')
 
@@ -108,12 +112,16 @@ with open(config_path, 'r') as f:
 if args.num_classes < 0:
     args.num_classes = dataset_config_yaml[args.dataset_config]['num_classes']
 
+if args.modality == 'text':
+    from transformers import BertTokenizer
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
 def main():
     global args
     """Do stuff."""
 
     run_name = f'{args.dataset}_{args.arch}_finetune'
-    group_name = f'{args.arch}_baseline'
+    group_name = f'{args.arch}_{args.experiment_group}'
 
     # args.dataset이 비어있지 않을 때만 태그에 포함
     wandb_tags = [args.dataset] if args.dataset else []
@@ -183,7 +191,31 @@ def main():
     elif args.arch == 'resnet50':
         model = packnet_models.__dict__[args.arch](dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
     elif args.arch == 'perceiver':
-        model = packnet_models.__dict__[args.arch](
+        if args.modality == 'text':
+            base_perceiver = packnet_models.__dict__[args.arch](
+                                    input_channels=512,      # 텍스트 임베딩 차원
+                                    input_axis=1,            # 시퀀스 데이터 (토큰 시퀀스)
+                                    num_freq_bands=6,
+                                    depth=4,
+                                    max_freq=10,
+                                    num_latents=256,
+                                    latent_dim=512,
+                                    cross_heads=1,
+                                    latent_heads=8,
+                                    cross_dim_head=64,
+                                    latent_dim_head=64,
+                                    attn_dropout=0.,
+                                    ff_dropout=0.,
+                                    weight_tie_layers=False,
+                                    fourier_encode_data=False,  # 텍스트의 경우 Fourier 인코딩 비활성화
+                                    self_per_cross_attn=1,
+                                    final_classifier_head=False,
+                                    dataset_history=dataset_history,
+                                    dataset2num_classes=dataset2num_classes)
+            model = packnet_models.CombinedPerceiver(vocab_size=tokenizer.vocab_size, embed_dim=512, perceiver_model=base_perceiver)
+
+        else: 
+            model = packnet_models.__dict__[args.arch](
                                     input_channels=3,
                                     input_axis=2,
                                     num_freq_bands=6,
@@ -297,8 +329,12 @@ def main():
             'fc_bias': {}
         }
 
-    train_loader = dataset.train_loader(args.dataset_config, args.batch_size, dataset_name=args.dataset)
-    val_loader = dataset.val_loader(args.dataset_config, args.val_batch_size, dataset_name=args.dataset)
+    if args.modality == 'text':
+        train_loader = dataset.train_loader(args.dataset_config, args.batch_size, dataset_name=args.dataset, tokenizer=tokenizer)
+        val_loader = dataset.val_loader(args.dataset_config, args.val_batch_size, dataset_name=args.dataset, tokenizer=tokenizer)
+    else:
+        train_loader = dataset.train_loader(args.dataset_config, args.batch_size, dataset_name=args.dataset)
+        val_loader = dataset.val_loader(args.dataset_config, args.val_batch_size, dataset_name=args.dataset)
 
     if args.save_folder != args.load_folder:
         start_epoch = 0

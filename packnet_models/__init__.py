@@ -5,4 +5,5 @@ from .mobilenet import *
 from .efficientnet import *
 from .spherenet import *
 from .perceiver import *
+from .perceiver import CombinedPerceiver
 from .perceiver_io import *
