@@ -77,10 +77,10 @@ cifar100:
     - vehicles_2
 
 n24news:
-  image_train_path: /data/youlee/data_library/n24news/image/train
-  image_test_path: /data/youlee/data_library/n24news/image/test
-  text_train_path: /data/youlee/data_library/n24news/text/train
-  text_test_path: /data/youlee/data_library/n24news/text/test
+  image_train_path: /data_library/n24news/image/train
+  image_test_path: /data_library/n24news/image/test
+  text_train_path: /data_library/n24news/text/train
+  text_test_path: /data_library/n24news/text/test
   subfolder: true
   num_classes: 6
   resize: [224, 224] # if arch='lenet', [32,32]
@@ -103,9 +103,11 @@ n24news:
     - group12 # "Dance", "Media", "Style"
 
 mscoco:
-  train_path: /data_library/mscoco/train_processed/image
-  test_path: /data_library/mscoco/val_processed/image
-  subfolder: false
+  image_train_path: /data_library/mscoco/image/train
+  image_test_path: /data_library/mscoco/image/val
+  text_train_path: /data_library/mscoco/text/train
+  text_test_path: /data_library/mscoco/text/val
+  subfolder: True
   num_classes: 78
   resize: [224, 224]
   random_horizontal_flip: true
@@ -195,8 +197,8 @@ mscoco:
 
 
 cub:
-  train_path: /data/youlee/data_library/cub_200_2011/image/train
-  test_path: /data/youlee/data_library/cub_200_2011/image/test
+  train_path: /data_library/cub_200_2011/image/train
+  test_path: /data_library/cub_200_2011/image/test
   subfolder: true
   num_classes: 27
   resize: [224, 224]
@@ -234,8 +236,8 @@ cub:
     - group27 # '191.Red_headed_Woodpecker', '192.Downy_Woodpecker', '193.Bewick_Wren', '194.Cactus_Wren', '195.Carolina_Wren'
 
 oxford: 
-  train_path: /data/youlee/data_library/oxford_102_flowers/image/train
-  test_path: /data/youlee/data_library/oxford_102_flowers/image/test
+  train_path: /data_library/oxford_102_flowers/image/train
+  test_path: /data_library/oxford_102_flowers/image/test
   subfolder: true
   num_classes: 6
   resize: [224, 224]
