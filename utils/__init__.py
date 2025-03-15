@@ -50,18 +50,12 @@ def classification_accuracy(output, target):
 
 
 def set_dataset_paths(args):
-    """Set default train and test path if not provided as input."""
-
     if not args.train_path:
-        args.train_path = '/data_library/cifar100/train/%s' % (args.dataset)
-
+        args.train_path = '/data_library/n24news/image/train'
+        # args.train_path = '/data_library/n24news/caption/train'
     if not args.val_path:
-        if (args.dataset in ['imagenet', 'face_verification', 'emotion', 'gender'] or
-            args.dataset[:3] == 'age'):
-            args.val_path = '/data_library/cifar100/val/%s' % (args.dataset)
-        else:
-            args.val_path = '/data_library/cifar100/test/%s' % (args.dataset)
-
+        args.val_path = '/data_library/n24news/image/test'
+        # args.val_path = '/data_library/n24news/caption/test'
 
 def set_logger(filepath):
     global logger
