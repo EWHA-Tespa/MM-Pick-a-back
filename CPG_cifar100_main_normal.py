@@ -29,6 +29,7 @@ import utils.dataset as dataset
 import models
 import models.layers as nl
 import wandb
+import wandb
 
 import csv
 
@@ -272,6 +273,7 @@ def main():
     elif args.arch == 'perceiver_io':
         model_class = getattr(models.perceiver_io, "PerceiverIO", None)
         model = model_class(depth=4, dim=512, queries_dim=512, num_latents=256, latent_dim=512, cross_heads=1, latent_heads=8, cross_dim_head=64, latent_dim_head=64, final_classifier_head=False, init_weights=True, datasets=True, weight_tie_layers=False, decoder_ff=True, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes, seq_dropout_prob=0.1, ff_dropout=0.3, attn_dropout=0.2)
+        model = model_class(depth=4, dim=512, queries_dim=512, num_latents=256, latent_dim=512, cross_heads=1, latent_heads=8, cross_dim_head=64, latent_dim_head=64, final_classifier_head=False, init_weights=True, datasets=True, weight_tie_layers=False, decoder_ff=True, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes, seq_dropout_prob=0.1, ff_dropout=0.3, attn_dropout=0.2)
     else:
         print('Error!')
         sys.exit(1)
@@ -335,6 +337,15 @@ def main():
                 if 'cuda' in module.weight.data.type():
                     mask = mask.cuda()
                 masks[name] = mask
+        # 현재 생성된 masks의 키 출력
+        print("[DEBUG] 현재 masks 키 목록:", list(masks.keys()))
+
+        # classifiers 개수와 masks 개수가 맞는지 확인
+        expected_classifier_key = f"classifiers.{len(model.classifiers) - 1}"
+        if expected_classifier_key not in masks:
+            print(f"[DEBUG] Warning: '{expected_classifier_key}'가 masks에 없습니다.")
+            print(f"[DEBUG] 현재 classifiers 개수: {len(model.classifiers)}")
+            print(f"[DEBUG] 현재 dataset_history: {model.datasets}")
         # 현재 생성된 masks의 키 출력
         print("[DEBUG] 현재 masks 키 목록:", list(masks.keys()))
 
