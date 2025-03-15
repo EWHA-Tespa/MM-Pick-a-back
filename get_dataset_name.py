@@ -14,4 +14,8 @@ dataset_name = datasets[task_id]
 if dataset_config == 'n24news' and task_id >= 7:
     dataset_name = dataset_name + "_text"
 
+if dataset_config == 'mscoco' and MODALITY == 'text':
+    dataset_name = dataset_name + "_text"
+
+
 print(dataset_name)

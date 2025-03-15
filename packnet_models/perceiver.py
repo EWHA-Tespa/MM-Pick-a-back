@@ -151,6 +151,8 @@ class perceiver(nn.Module):
         fourier_encode_data = True,
         self_per_cross_attn = 1,
         final_classifier_head = True,
+        vocab_size=None, # Text modality 용
+        embed_dim=None,
     ):
         """The shape of the final attention mechanism will be:
         depth * (cross attention -> self_per_cross_attn * self attention)
@@ -181,6 +183,21 @@ class perceiver(nn.Module):
           final_classifier_head: mean pool and project embeddings to number of classes (num_classes) at the end
         """
         super().__init__()
+        if vocab_size is not None and embed_dim is not None:
+            self.embedding = nn.Embedding(vocab_size, embed_dim)
+            original_channels = input_channels  # 원래의 input_channels 값을 저장
+            input_channels = embed_dim
+            # 텍스트의 경우 Fourier 인코딩은 필요 없다고 가정
+            fourier_encode_data = False
+            # 만약 원래의 채널 수(original_channels)가 embed_dim과 다르면 projection을 추가합니다.
+            if original_channels != embed_dim:
+                self.input_projection = nn.Linear(original_channels, embed_dim)
+            else:
+                self.input_projection = None
+        else:
+            self.embedding = None
+            self.input_projection = None
+        
         self.input_axis = input_axis
         self.max_freq = max_freq
         self.num_freq_bands = num_freq_bands
@@ -242,8 +259,18 @@ class perceiver(nn.Module):
         mask = None,
         return_embeddings = False
     ):
-        if data.ndim == 4:
-            data = data.permute(0, 2, 3, 1)
+        if data.dtype in (torch.int32, torch.int64):
+            # 정수형이면 텍스트 토큰이라 가정하여 embedding 적용
+            if self.embedding is not None:
+                data = self.embedding(data)
+        else:
+            # 데이터가 float형이면 image 데이터로 가정.
+            # 먼저 4D image의 경우 (B, C, H, W) -> (B, H, W, C)로 변환
+            if data.ndim == 4:
+                data = data.permute(0, 2, 3, 1)
+            # 텍스트 모달리티로 학습한 모델에 image가 들어온 경우, input_projection을 적용
+            if self.embedding is not None and self.input_projection is not None:
+                data = self.input_projection(data)  
 
         b, *axis, _, device, dtype = *data.shape, data.device, data.dtype
         assert len(axis) == self.input_axis, 'input data must have the right number of axis'
@@ -329,28 +356,30 @@ class perceiver(nn.Module):
         self.classifier = self.classifiers[self.datasets.index(dataset)]
 
 
-class CombinedPerceiver(nn.Module):
-    """
-    - forward: (B, T) -> (B, num_classes)
-    - get_text_latent: (B, T) -> (B, latent_dim)
-    """
-    def __init__(self, vocab_size, embed_dim, perceiver_model):
-        super().__init__()
-        self.embedding = nn.Embedding(vocab_size, embed_dim)
-        self.perceiver = perceiver_model  # Perceiver 모델은 (B, T, embed_dim) 입력을 기대함
+# class CombinedPerceiver(nn.Module):
+#     """
+#     - forward: (B, T) -> (B, num_classes)
+#     - get_text_latent: (B, T) -> (B, latent_dim)
+#     """
+#     def __init__(self, vocab_size, embed_dim, perceiver_model):
+#         super().__init__()
+#         self.embedding = nn.Embedding(vocab_size, embed_dim)
+#         self.perceiver = perceiver_model  # Perceiver 모델은 (B, T, embed_dim) 입력을 기대함
+#         self.datasets = self.perceiver.datasets
+#         self.dataset2num_classes = self.perceiver.dataset2num_classes
+#     def forward(self, input_ids):
+#         # (B, T) -> (B, T, embed_dim)
+#         input_ids = input_ids.long()
+#         embeddings = self.embedding(input_ids)
+#         # Perceiver에 임베딩을 전달하여 최종 분류 결과 도출
+#         return self.perceiver(embeddings)
 
-    def forward(self, input_ids):
-        # (B, T) -> (B, T, embed_dim)
-        embeddings = self.embedding(input_ids)
-        # Perceiver에 임베딩을 전달하여 최종 분류 결과 도출
-        return self.perceiver(embeddings)
+#     def get_text_latent(self, input_ids):
+#         embeddings = self.embedding(input_ids)
+#         return self.perceiver.forward_to_latent(embeddings)
 
-    def get_text_latent(self, input_ids):
-        embeddings = self.embedding(input_ids)
-        return self.perceiver.forward_to_latent(embeddings)
-
-    def add_dataset(self, dataset, num_classes):
-        self.perceiver.add_dataset(dataset, num_classes)
+#     def add_dataset(self, dataset, num_classes):
+#         self.perceiver.add_dataset(dataset, num_classes)
     
-    def set_dataset(self, dataset):
-        self.perceiver.set_dataset(dataset)
+#     def set_dataset(self, dataset):
+#         self.perceiver.set_dataset(dataset)

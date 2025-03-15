@@ -67,7 +67,7 @@ parser.add_argument('--num_classes', type=int, default=-1,
 
 parser.add_argument('--lr', type=float, default=0.1,
                    help='Learning rate for parameters, used for baselines')
-parser.add_argument('--batch_size', type=int, default=32,
+parser.add_argument('--batch_size', type=int, default=4,
                    help='input batch size for training')
 parser.add_argument('--val_batch_size', type=int, default=100,
                    help='input batch size for validation')
@@ -192,9 +192,9 @@ def main():
         model = packnet_models.__dict__[args.arch](dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
     elif args.arch == 'perceiver':
         if args.modality == 'text':
-            base_perceiver = packnet_models.__dict__[args.arch](
-                                    input_channels=512,      # 텍스트 임베딩 차원
-                                    input_axis=1,            # 시퀀스 데이터 (토큰 시퀀스)
+            model = packnet_models.__dict__[args.arch](
+                                    input_channels=3,
+                                    input_axis=2,
                                     num_freq_bands=6,
                                     depth=4,
                                     max_freq=10,
@@ -207,12 +207,13 @@ def main():
                                     attn_dropout=0.,
                                     ff_dropout=0.,
                                     weight_tie_layers=False,
-                                    fourier_encode_data=False,  # 텍스트의 경우 Fourier 인코딩 비활성화
+                                    fourier_encode_data=True,
                                     self_per_cross_attn=1,
                                     final_classifier_head=False,
                                     dataset_history=dataset_history,
-                                    dataset2num_classes=dataset2num_classes)
-            model = packnet_models.CombinedPerceiver(vocab_size=tokenizer.vocab_size, embed_dim=512, perceiver_model=base_perceiver)
+                                    dataset2num_classes=dataset2num_classes,
+                                    vocab_size=tokenizer.vocab_size, #여기에 뭐 들어가야하나? 
+                                    embed_dim=512)
 
         else: 
             model = packnet_models.__dict__[args.arch](

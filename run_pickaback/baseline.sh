@@ -1,14 +1,6 @@
 #!/bin/bash
 
 # 사용법: ./run_experiment.sh dataset_config
-# export CUDA_HOME=/usr/local/cuda-11.5
-# export PATH=$CUDA_HOME/bin:$PATH
-# export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
-
-# echo "CUDA_HOME: $CUDA_HOME"
-# echo "PATH: $PATH"
-# echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
-# nvcc --version
 
 if [ "$#" -lt 1 ]; then
     echo "Usage: $0 dataset_config modality"
@@ -21,7 +13,7 @@ MODALITY=$2
 GPU_ID=0
 ARCH='perceiver'
 EXPIREMENT_GROUP='baseline'
-FINETUNE_EPOCHS=100
+FINETUNE_EPOCHS=1
 seed=2
 
 for TASK_ID in {1..15}; do  # change according to the number of classes in the dataset
