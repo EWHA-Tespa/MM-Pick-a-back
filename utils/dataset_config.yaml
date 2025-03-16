@@ -77,8 +77,8 @@ cifar100:
     - vehicles_2
 
 n24news:
-  train_path: /data/youlee/data_library/n24news/image/train
-  test_path: /data/youlee/data_library/n24news/image/test
+  train_path: /data_library/n24news/image/train
+  test_path: /data_library/n24news/image/test
   subfolder: true
   num_classes: 6
   resize: [224, 224] # if arch='lenet', [32,32]
@@ -95,8 +95,8 @@ n24news:
     - group6 # "Dance", "Media", "Style"
 
 mscoco:
-  train_path: /data/youlee/data_library/mscoco/image/train
-  test_path: /data/youlee/data_library/mscoco/image/val
+  train_path: /data_library/mscoco/image/train
+  test_path: /data_library/mscoco/image/val
   subfolder: true
   num_classes: 15
   resize: [224, 224]
@@ -162,11 +162,11 @@ cub:
     - group27 # '191.Red_headed_Woodpecker', '192.Downy_Woodpecker', '193.Bewick_Wren', '194.Cactus_Wren', '195.Carolina_Wren'
 
 oxford: 
-  train_path: /data/youlee/data_library/oxford_102_flowers/image/train
-  test_path: /data/youlee/data_library/oxford_102_flowers/image/test
+  train_path: /data_library/oxford_102_flowers/image/train
+  test_path: /data_library/oxford_102_flowers/image/test
   subfolder: true
   num_classes: 6
-  resize: [224, 224]
+  resize: [64, 64]
   random_horizontal_flip: true
   mean: [0.485, 0.456, 0.406]
   std: [0.229, 0.224, 0.225]
