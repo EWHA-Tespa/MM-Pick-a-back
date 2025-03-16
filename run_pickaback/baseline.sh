@@ -14,12 +14,14 @@ GPU_ID=0
 ARCH='perceiver'
 FINETUNE_EPOCHS=100
 seed=2
+EXPNAME='baseline'
 
 for TASK_ID in {4..6}; do  # change according to the number of classes in the dataset
     DATASET=$(python3 get_dataset_name.py $DATASET_CONFIG $TASK_ID)
     
     CUDA_VISIBLE_DEVICES=$GPU_ID python3 packnet_cifar100_main_normal.py \
         --arch $ARCH \
+        --expname $EXPNAME \
         --dataset_config $DATASET_CONFIG \
         --dataset $DATASET \
         --num_classes -1 \

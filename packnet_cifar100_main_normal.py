@@ -58,6 +58,8 @@ warnings.filterwarnings("ignore")
 parser = argparse.ArgumentParser()
 parser.add_argument('--arch', type=str, default='vgg16_bn_cifar100',
                    help='Architectures')
+parser.add_argument('--expname', type=str,
+                    help='Weights & Biases experiment name')
 parser.add_argument('--num_classes', type=int, default=-1,
                    help='Num outputs for dataset')
 
@@ -112,11 +114,12 @@ def main():
     global args
     """Do stuff."""
 
-    run_name = f'{args.dataset}_{args.arch}_finetune'
-    group_name = f'{args.arch}_baseline'
+    run_name = f'{args.expname}_{args.dataset}_{args.arch}'
+    group_name = f'{args.expname}_{args.arch}'
 
     # args.dataset이 비어있지 않을 때만 태그에 포함
     wandb_tags = [args.dataset] if args.dataset else []
+    wandb_tags.append(args.expname)
 
     wandb.init(project='mm-pick-a-back', 
                name=run_name,

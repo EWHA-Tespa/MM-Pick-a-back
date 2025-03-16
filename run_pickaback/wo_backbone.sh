@@ -5,10 +5,13 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: $0 dataset_config"
     exit 1
 fi
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 DATASET_CONFIG=$1
-GPU_ID=1
+GPU_ID=0
 ARCH='perceiver'
+EXPNAME='wo_backbone'
+
 FINETUNE_EPOCHS=100
 NUM_CLASSES=-1
 INIT_LR=1e-2
@@ -30,6 +33,7 @@ for TASK_ID in {1..6}; do
     while [ $state -eq 2 ]; do
         CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar100_main_normal.py \
            --arch $ARCH \
+           --expname $EXPNAME \
            --dataset_config $DATASET_CONFIG \
            --dataset $DATASET \
            --num_classes $NUM_CLASSES \

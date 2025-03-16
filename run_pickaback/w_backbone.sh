@@ -12,8 +12,10 @@ NUM_CLASSES=-1
 INIT_LR=1e-2
 PRUNING_LR=1e-3
 
-GPU_ID=2
+GPU_ID=0
 ARCH='perceiver'
+EXPNAME='w_backbone'
+
 FINETUNE_EPOCHS=100
 DEFAULT_NETWORK_WIDTH_MULTIPLIER=1.0
 NETWORK_WIDTH_MULTIPLIER=$DEFAULT_NETWORK_WIDTH_MULTIPLIER
@@ -51,6 +53,7 @@ tail -n +2 "$PICKABACK_CSV" | while IFS=',' read -r csv_target_id csv_task_id; d
     while [ $state -eq 2 ]; do
         CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar100_main_normal.py \
            --arch $ARCH \
+           --expname $EXPNAME \
            --dataset $DATASET_TASK --num_classes $NUM_CLASSES \
            --lr $INIT_LR \
            --lr_mask $LR_MASK \
