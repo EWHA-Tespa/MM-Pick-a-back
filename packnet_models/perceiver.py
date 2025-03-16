@@ -151,6 +151,9 @@ class perceiver(nn.Module):
         fourier_encode_data = True,
         self_per_cross_attn = 1,
         final_classifier_head = True,
+        vocab_size=None, # Text modality 용
+        embed_dim=None,
+        modality='image',
     ):
         """The shape of the final attention mechanism will be:
         depth * (cross attention -> self_per_cross_attn * self attention)
@@ -181,6 +184,7 @@ class perceiver(nn.Module):
           final_classifier_head: mean pool and project embeddings to number of classes (num_classes) at the end
         """
         super().__init__()
+        self.modality = modality
         self.input_axis = input_axis
         self.max_freq = max_freq
         self.num_freq_bands = num_freq_bands
@@ -193,6 +197,10 @@ class perceiver(nn.Module):
 
         fourier_channels = (input_axis * ((num_freq_bands * 2) + 1)) if fourier_encode_data else 0
         input_dim = fourier_channels + input_channels
+        
+        if self.modality == 'text':
+            input_dim = 768
+        # self.input_projection = nn.Linear(input_dim, 512) # 모달리티 간 차원 맞추기 용 projection layer
 
         self.latents = nn.Parameter(torch.randn(num_latents, latent_dim))
 
@@ -242,28 +250,29 @@ class perceiver(nn.Module):
         mask = None,
         return_embeddings = False
     ):
-        if data.ndim == 4:
-            data = data.permute(0, 2, 3, 1)
+        if self.modality != 'text':
+            if data.ndim == 4:
+                data = data.permute(0, 2, 3, 1)
 
-        b, *axis, _, device, dtype = *data.shape, data.device, data.dtype
-        assert len(axis) == self.input_axis, 'input data must have the right number of axis'
+            b, *axis, _, device, dtype = *data.shape, data.device, data.dtype
+            assert len(axis) == self.input_axis, 'input data must have the right number of axis'
 
-        if self.fourier_encode_data:
-            # calculate fourier encoded positions in the range of [-1, 1], for all axis
+            if self.fourier_encode_data:
+                # calculate fourier encoded positions in the range of [-1, 1], for all axis
 
-            axis_pos = list(map(lambda size: torch.linspace(-1., 1., steps=size, device=device, dtype=dtype), axis))
-            pos = torch.stack(torch.meshgrid(*axis_pos, indexing = 'ij'), dim = -1)
-            enc_pos = fourier_encode(pos, self.max_freq, self.num_freq_bands)
-            enc_pos = rearrange(enc_pos, '... n d -> ... (n d)')
-            enc_pos = repeat(enc_pos, '... -> b ...', b = b)
+                axis_pos = list(map(lambda size: torch.linspace(-1., 1., steps=size, device=device, dtype=dtype), axis))
+                pos = torch.stack(torch.meshgrid(*axis_pos, indexing = 'ij'), dim = -1)
+                enc_pos = fourier_encode(pos, self.max_freq, self.num_freq_bands)
+                enc_pos = rearrange(enc_pos, '... n d -> ... (n d)')
+                enc_pos = repeat(enc_pos, '... -> b ...', b = b)
 
-            data = torch.cat((data, enc_pos), dim = -1)
+                data = torch.cat((data, enc_pos), dim = -1)
 
-        # concat to channels of data and flatten axis
+            # concat to channels of data and flatten axis
 
-        data = rearrange(data, 'b ... d -> b (...) d')
+            data = rearrange(data, 'b ... d -> b (...) d')
 
-        x = repeat(self.latents, 'n d -> b n d', b = b)
+            x = repeat(self.latents, 'n d -> b n d', b = b)
 
         # layers
 

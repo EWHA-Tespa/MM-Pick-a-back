@@ -178,3 +178,15 @@ oxford:
     - group4 # "class_00073", "class_00041", "class_00083", "class_00095"
     - group5 # "class_00089", "class_00081", "class_00075", "class_00076"
     - group6 # "class_00094", "class_00088", "class_00078", "class_00043"
+    - group7
+    - group8
+    - group9
+    - group10
+    - group11
+    - group12
+  
+  modality: 
+    default: image
+    text_groups: [group7, group8, group9, group10, group11, group12]
+  text_train_path: /data_library/oxford_102_flowers/text/train
+  text_test_path: /data_library/oxford_102_flowers/text/test

@@ -60,6 +60,8 @@ parser.add_argument('--arch', type=str, default='vgg16_bn_cifar100',
                    help='Architectures')
 parser.add_argument('--expname', type=str,
                     help='Weights & Biases experiment name')
+parser.add_argument('--modality', type=str, default='image',
+                    help='Modality of data')
 parser.add_argument('--num_classes', type=int, default=-1,
                    help='Num outputs for dataset')
 
@@ -205,7 +207,8 @@ def main():
                                     self_per_cross_attn=1,
                                     final_classifier_head=False,
                                     dataset_history=dataset_history,
-                                    dataset2num_classes=dataset2num_classes)
+                                    dataset2num_classes=dataset2num_classes,
+                                    modality=args.modality)
     elif args.arch == 'perceiver_io':
         perceiver_class = packnet_models.perceiver_io.PerceiverIO  
         model = perceiver_class(
