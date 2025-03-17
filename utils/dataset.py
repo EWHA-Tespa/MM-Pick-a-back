@@ -3,12 +3,15 @@ import yaml
 import torch
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
+from torch.utils.data import Dataset
+from transformers import BertModel, BertTokenizer
 
+bert_model = BertModel.from_pretrained("bert-base-uncased")
+bert_model.eval()
 
 config_path = os.path.join(os.path.dirname(__file__), 'dataset_config.yaml')
 with open(config_path, 'r') as f:
     dataset_config = yaml.safe_load(f)
-
 
 def get_transforms(cfg, dataset_name=None, is_train=True):
     """
@@ -60,13 +63,6 @@ def get_transforms(cfg, dataset_name=None, is_train=True):
         
     return transforms.Compose(transform_list)
 
-
-# utils/dataset.py
-import os
-import torch
-from torch.utils.data import Dataset
-from transformers import BertTokenizer
-
 class TextDataset(Dataset):
     def __init__(self, root_dir, tokenizer_name='bert-base-uncased', max_length=128, is_train=True):
         self.root_dir = root_dir
@@ -89,14 +85,17 @@ class TextDataset(Dataset):
         filepath, label = self.samples[idx]
         with open(filepath, 'r', encoding='utf-8') as f:
             text = f.read().strip()
-        # BERT 토크나이저로 토큰화
         encoding = self.tokenizer(text,
-                                  padding='max_length',
-                                  truncation=True,
-                                  max_length=self.max_length,
-                                  return_tensors='pt')
-        # squeeze()를 통해 batch dimension 제거
-        encoding = {k: v.squeeze(0) for k, v in encoding.items()}
+                                padding='max_length',
+                                truncation=True,
+                                max_length=self.max_length,
+                                return_tensors='pt')
+        # encoding = {k: v.squeeze(0) for k, v in encoding.items()}
+
+        with torch.no_grad():
+            input_embeds = bert_model.embeddings(encoding["input_ids"])
+        input_embeds = input_embeds.squeeze(0)
+        encoding["input_embeds"] = input_embeds
         return encoding, label
 
 def train_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_memory=True):
