@@ -26,7 +26,7 @@ VERSION_NAME='CPG_single_scratch_woexp'
 CHECKPOINTS_NAME="checkpoints_${ARCH}"
 BASELINE_FILE="logs_${ARCH}/baseline_${DATASET_CONFIG}_acc.txt"
 
-for TASK_ID in {7..12}; do
+for TASK_ID in {1..12}; do
     if [ $TASK_ID -le 6 ]; then
         MODALITY='image'
     else

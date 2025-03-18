@@ -112,7 +112,7 @@ def train_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_
             is_text = True
 
     if is_text:
-        train_path = os.path.join(cfg.get('text_train_path', cfg['train_path']), dataset_name)
+        train_path = os.path.join(cfg.get('text_train_path', cfg['text_train_path']), dataset_name)
         max_length = cfg.get('text_max_length', 128)
         train_dataset = TextDataset(train_path, max_length=max_length, is_train=True)
     else:
@@ -140,7 +140,7 @@ def val_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_me
             is_text = True
 
     if is_text:
-        test_path = os.path.join(cfg.get('text_test_path', cfg['test_path']), dataset_name)
+        test_path = os.path.join(cfg.get('text_test_path', cfg['text_test_path']), dataset_name)
         max_length = cfg.get('text_max_length', 128)
         val_dataset = TextDataset(test_path, max_length=max_length, is_train=False)
     else:

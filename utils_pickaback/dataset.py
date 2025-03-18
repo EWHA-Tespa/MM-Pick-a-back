@@ -127,14 +127,25 @@ def train_loader(config_name, batch_size, dataset_name=None, sub_dataset=None, n
 def val_loader(config_name, batch_size, dataset_name=None, sub_dataset=None, num_workers=4, pin_memory=True):
     cfg = dataset_config[config_name]
 
-    if sub_dataset is not None and cfg.get("subfolder", False):
-        test_path = os.path.join(cfg['test_path'], sub_dataset)
+    is_text = False
+    if dataset_name is not None and 'modality' in cfg:
+        if dataset_name in cfg['modality'].get('text_groups', []):
+            is_text = True
+
+    if is_text:
+        if sub_dataset is not None and cfg.get("subfolder", False):
+            test_path = os.path.join(cfg.get('text_test_path', cfg['text_test_path']), dataset_name)
+            max_length = cfg.get('text_max_length', 128)
+            val_dataset = TextDataset(train_path, max_length=max_length, is_train=False)
+        else:
+            test_path = cfg['text_test_path']
     else:
-        test_path = cfg['test_path']
-    
-    val_transform = get_transforms(cfg, dataset_name=dataset_name, is_train=False)
-    val_dataset = datasets.ImageFolder(test_path, transform=val_transform)
-    
+        if sub_dataset is not None and cfg.get("subfolder", False):
+            test_path = os.path.join(cfg['test_path'], sub_dataset)
+        else:
+            test_path = cfg['test_path']
+        val_transform = get_transforms(cfg, dataset_name=dataset_name, is_train=False)
+        val_dataset = datasets.ImageFolder(test_path, transform=val_transform)
     return torch.utils.data.DataLoader(
         val_dataset,
         batch_size=batch_size,
