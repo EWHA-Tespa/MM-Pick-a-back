@@ -64,6 +64,8 @@ parser.add_argument('--arch', type=str, default='resnet50',
                    help='Architectures')
 parser.add_argument('--expname', type=str,
                     help='Weights & Biases experiment name')
+parser.add_argument('--modality', type=str, default='image',
+                    help='Modality of data')
 parser.add_argument('--num_classes', type=int, default=-1,
                    help='Num outputs for dataset')
 
@@ -273,7 +275,8 @@ def main():
                                     self_per_cross_attn=1,
                                     final_classifier_head=False,
                                     dataset_history=dataset_history,
-                                    dataset2num_classes=dataset2num_classes)
+                                    dataset2num_classes=dataset2num_classes,
+                                    modality=args.modality)
     elif args.arch == 'perceiver_io':
         model_class = getattr(models.perceiver_io, "PerceiverIO", None)
         model = model_class(depth=4, dim=512, queries_dim=512, num_latents=256, latent_dim=512, cross_heads=1, latent_heads=8, cross_dim_head=64, latent_dim_head=64, init_weights=True, datasets=True, weight_tie_layers=False, decoder_ff=True, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)

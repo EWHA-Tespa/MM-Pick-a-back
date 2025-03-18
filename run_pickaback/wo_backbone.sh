@@ -26,7 +26,13 @@ VERSION_NAME='CPG_single_scratch_woexp'
 CHECKPOINTS_NAME="checkpoints_${ARCH}"
 BASELINE_FILE="logs_${ARCH}/baseline_${DATASET_CONFIG}_acc.txt"
 
-for TASK_ID in {1..6}; do
+for TASK_ID in {7..12}; do
+    if [ $TASK_ID -le 6 ]; then
+        MODALITY='image'
+    else
+        MODALITY='text'
+    fi
+
     DATASET=$(python3 get_dataset_name.py $DATASET_CONFIG $TASK_ID)
     
     state=2
@@ -34,6 +40,7 @@ for TASK_ID in {1..6}; do
         CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar100_main_normal.py \
            --arch $ARCH \
            --expname $EXPNAME \
+           --modality $MODALITY \
            --dataset_config $DATASET_CONFIG \
            --dataset $DATASET \
            --num_classes $NUM_CLASSES \
@@ -74,6 +81,8 @@ for TASK_ID in {1..6}; do
     if [ $state -ne 5 ]; then
         CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar100_main_normal.py \
             --arch $ARCH \
+            --expname $EXPNAME \
+            --modality $MODALITY \
             --dataset_config $DATASET_CONFIG \
             --dataset $DATASET \
             --num_classes $NUM_CLASSES  \
@@ -107,6 +116,8 @@ for TASK_ID in {1..6}; do
 
             CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar100_main_normal.py \
                 --arch $ARCH \
+                --expname $EXPNAME \
+                --modality $MODALITY \
                 --dataset_config $DATASET_CONFIG \
                 --dataset $DATASET \
                 --num_classes $NUM_CLASSES \

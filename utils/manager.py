@@ -131,7 +131,7 @@ class Manager(object):
                         target = target.cuda()
 
                     output = self.model(data)
-                    num = data.size(0)
+                    num = get_batch_size(data)
                     val_loss.update(self.criterion(output, target), num)
                     val_accuracy.update(classification_accuracy(output, target), num)
 
