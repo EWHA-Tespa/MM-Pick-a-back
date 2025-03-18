@@ -244,7 +244,12 @@ class perceiver(nn.Module):
         if init_weights:
             self._initialize_weights()
     
-    def forward(self, data, mask=None, return_embeddings=False):
+    def forward(
+        self,
+        data,
+        mask=None,
+        return_embeddings=False
+    ):
         if self.modality == 'text':
             # 텍스트 모달리티: 입력 data는 이미 [B, T, embed_dim] 형태라고 가정
             if isinstance(data, dict):

@@ -162,11 +162,11 @@ cub:
     - group27 # '191.Red_headed_Woodpecker', '192.Downy_Woodpecker', '193.Bewick_Wren', '194.Cactus_Wren', '195.Carolina_Wren'
 
 oxford: 
-  train_path: /data/youlee/data_library/oxford_102_flowers/image/train
-  test_path: /data/youlee/data_library/oxford_102_flowers/image/test
+  train_path: /data_library/oxford_102_flowers/image/train
+  test_path: /data_library/oxford_102_flowers/image/test
   subfolder: true
   num_classes: 6
-  resize: [224, 224]
+  resize: [64, 64]
   random_horizontal_flip: true
   mean: [0.485, 0.456, 0.406]
   std: [0.229, 0.224, 0.225]
@@ -178,3 +178,15 @@ oxford:
     - group4 # "class_00073", "class_00041", "class_00083", "class_00095"
     - group5 # "class_00089", "class_00081", "class_00075", "class_00076"
     - group6 # "class_00094", "class_00088", "class_00078", "class_00043"
+    - group7
+    - group8
+    - group9
+    - group10
+    - group11
+    - group12
+  
+  modality: 
+    default: image
+    text_groups: [group7, group8, group9, group10, group11, group12]
+  text_train_path: /data_library/oxford_102_flowers/text/train
+  text_test_path: /data_library/oxford_102_flowers/text/test

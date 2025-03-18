@@ -8,7 +8,7 @@ fi
 
 DATASET_CONFIG=$1
 
-for TASK_ID in {1..6}; do
+for TASK_ID in {1..12}; do
     # TARGET_TASK_ID=1
 
     # 각 TASK_ID에 맞는 데이터셋 이름을 가져옴
