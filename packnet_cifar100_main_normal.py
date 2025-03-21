@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
+import torch.multiprocessing as mp
 import torch.utils.model_zoo as model_zoo
 from torch.nn.parameter import Parameter
 
@@ -188,10 +189,10 @@ def main():
     elif args.arch == 'resnet50':
         model = packnet_models.__dict__[args.arch](dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
     elif args.arch == 'perceiver':
-        if args.modality == 'image':
-            model = packnet_models.__dict__[args.arch](
-                                        input_channels=3,
-                                        input_axis=2,
+        # if args.modality != 'image':
+        model = packnet_models.__dict__[args.arch](
+                                        input_channels=512,
+                                        input_axis=1,
                                         num_freq_bands=6,
                                         depth=4,
                                         max_freq=10,
@@ -209,10 +210,10 @@ def main():
                                         final_classifier_head=False,
                                         dataset_history=dataset_history,
                                         dataset2num_classes=dataset2num_classes)
-        else:
-            model = packnet_models.combined_perceiver(input_dim=768,
-                                                    dataset_history=dataset_history,
-                                                    dataset2num_classes=dataset2num_classes) # 여기다 차원입력
+        # else:
+        #     model = packnet_models.combined_perceiver(input_dim=768,
+        #                                             dataset_history=dataset_history,
+        #                                             dataset2num_classes=dataset2num_classes) # 여기다 차원입력
     elif args.arch == 'perceiver_io':
         perceiver_class = packnet_models.perceiver_io.PerceiverIO  
         model = perceiver_class(
@@ -426,4 +427,5 @@ def main():
     print('-' * 16)
 
 if __name__ == '__main__':
+    mp.set_start_method("spawn", force=True)
     main()
