@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 사용법: ./run_experiment.sh dataset_config
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+# export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 if [ "$#" -lt 1 ]; then
     echo "Usage: $0 dataset_config"
@@ -16,7 +16,7 @@ FINETUNE_EPOCHS=100
 seed=2
 EXPNAME='baseline'
 
-for TASK_ID in {1..12}; do  # change according to the number of classes in the dataset
+for TASK_ID in 7; do  # change according to the number of classes in the dataset
     if [ $TASK_ID -le 6 ]; then
         MODALITY='image'
     else

@@ -188,27 +188,31 @@ def main():
     elif args.arch == 'resnet50':
         model = packnet_models.__dict__[args.arch](dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
     elif args.arch == 'perceiver':
-        model = packnet_models.__dict__[args.arch](
-                                    input_channels=3,
-                                    input_axis=2,
-                                    num_freq_bands=6,
-                                    depth=4,
-                                    max_freq=10,
-                                    num_latents=256,
-                                    latent_dim=512,
-                                    cross_heads=1,
-                                    latent_heads=8,
-                                    cross_dim_head=64,
-                                    latent_dim_head=64,
-                                    attn_dropout=0.,
-                                    ff_dropout=0.,
-                                    weight_tie_layers=False,
-                                    fourier_encode_data=True,
-                                    self_per_cross_attn=1,
-                                    final_classifier_head=False,
-                                    dataset_history=dataset_history,
-                                    dataset2num_classes=dataset2num_classes,
-                                    modality=args.modality)
+        if args.modality == 'image':
+            model = packnet_models.__dict__[args.arch](
+                                        input_channels=3,
+                                        input_axis=2,
+                                        num_freq_bands=6,
+                                        depth=4,
+                                        max_freq=10,
+                                        num_latents=256,
+                                        latent_dim=512,
+                                        cross_heads=1,
+                                        latent_heads=8,
+                                        cross_dim_head=64,
+                                        latent_dim_head=64,
+                                        attn_dropout=0.,
+                                        ff_dropout=0.,
+                                        weight_tie_layers=False,
+                                        fourier_encode_data=True,
+                                        self_per_cross_attn=1,
+                                        final_classifier_head=False,
+                                        dataset_history=dataset_history,
+                                        dataset2num_classes=dataset2num_classes)
+        else:
+            model = packnet_models.combined_perceiver(input_dim=768,
+                                                    dataset_history=dataset_history,
+                                                    dataset2num_classes=dataset2num_classes) # 여기다 차원입력
     elif args.arch == 'perceiver_io':
         perceiver_class = packnet_models.perceiver_io.PerceiverIO  
         model = perceiver_class(

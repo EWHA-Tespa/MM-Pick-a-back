@@ -4,9 +4,12 @@ import torch
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
-from transformers import BertModel, BertTokenizer
+from transformers import BertModel, BertTokenizer, DistilBertTokenizer, DistilBertModel
 
-bert_model = BertModel.from_pretrained("bert-base-uncased")
+# bert_model = BertModel.from_pretrained("bert-base-uncased")
+tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
+bert_model = DistilBertModel.from_pretrained('distilbert-base-uncased')
+# embedding_layer = bert_model.embeddings 
 bert_model.eval()
 
 config_path = os.path.join(os.path.dirname(__file__), 'dataset_config.yaml')
@@ -64,10 +67,10 @@ def get_transforms(cfg, dataset_name=None, is_train=True):
     return transforms.Compose(transform_list)
 
 class TextDataset(Dataset):
-    def __init__(self, root_dir, tokenizer_name='bert-base-uncased', max_length=128, is_train=True):
+    def __init__(self, root_dir, tokenizer_name='distilbert-base-uncased', max_length=128, is_train=True):
         self.root_dir = root_dir
         self.samples = []  # (filepath, label) 튜플 리스트
-        self.tokenizer = BertTokenizer.from_pretrained(tokenizer_name)
+        self.tokenizer = DistilBertTokenizer.from_pretrained(tokenizer_name)
         self.max_length = max_length
         
         # 각 서브폴더를 클래스(label)로 간주
@@ -91,12 +94,16 @@ class TextDataset(Dataset):
                                 max_length=self.max_length,
                                 return_tensors='pt')
         # encoding = {k: v.squeeze(0) for k, v in encoding.items()}
-
         with torch.no_grad():
-            input_embeds = bert_model.embeddings(encoding["input_ids"])
-        input_embeds = input_embeds.squeeze(0)
-        encoding["input_embeds"] = input_embeds
-        return encoding, label
+            outputs = bert_model(**encoding)
+        text_embedding = outputs.last_hidden_state.squeeze(0)
+        # text_embedding = text_embedding.unsqueeze(1).repeat(1,3,1)
+        # text_embedding = text_embedding.view(-1, 3, 16, 16)
+        # with torch.no_grad():
+        #     input_embeds = embedding_layer.embeddings(encoding["input_ids"])
+        # input_embeds = input_embeds.squeeze(0)
+        # encoding["input_embeds"] = input_embeds
+        return text_embedding, label
 
 def train_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_memory=True):
     """

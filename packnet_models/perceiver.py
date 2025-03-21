@@ -11,7 +11,8 @@ from einops.layers.torch import Reduce
 # --- Helper Functions and Classes (unchanged) ---
 
 __all__ = [
-    'perceiver'
+    'perceiver',
+    'combined_perceiver'
 ]
 
 def exists(val):
@@ -151,9 +152,6 @@ class perceiver(nn.Module):
         fourier_encode_data = True,
         self_per_cross_attn = 1,
         final_classifier_head = True,
-        vocab_size=None, # Text modality 용
-        embed_dim=None,
-        modality='image',
     ):
         """The shape of the final attention mechanism will be:
         depth * (cross attention -> self_per_cross_attn * self attention)
@@ -184,7 +182,6 @@ class perceiver(nn.Module):
           final_classifier_head: mean pool and project embeddings to number of classes (num_classes) at the end
         """
         super().__init__()
-        self.modality = modality
         self.input_axis = input_axis
         self.max_freq = max_freq
         self.num_freq_bands = num_freq_bands
@@ -197,14 +194,10 @@ class perceiver(nn.Module):
 
         fourier_channels = (input_axis * ((num_freq_bands * 2) + 1)) if fourier_encode_data else 0
         input_dim = fourier_channels + input_channels
-        
-        if self.modality == 'text':
-            input_dim = 768
-        self.input_projection = nn.Linear(input_dim, 512) # 모달리티 간 차원 맞추기 용 projection layer
 
         self.latents = nn.Parameter(torch.randn(num_latents, latent_dim))
 
-        get_cross_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, 512, heads = cross_heads, dim_head = cross_dim_head, dropout = attn_dropout), context_dim = 512)
+        get_cross_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, input_dim, heads = cross_heads, dim_head = cross_dim_head, dropout = attn_dropout), context_dim = input_dim)
         get_cross_ff = lambda: PreNorm(latent_dim, FeedForward(latent_dim, dropout = ff_dropout))
         get_latent_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, heads = latent_heads, dim_head = latent_dim_head, dropout = attn_dropout))
         get_latent_ff = lambda: PreNorm(latent_dim, FeedForward(latent_dim, dropout = ff_dropout))
@@ -247,48 +240,48 @@ class perceiver(nn.Module):
     def forward(
         self,
         data,
-        mask=None,
-        return_embeddings=False
+        mask = None,
+        return_embeddings = False
     ):
-        if self.modality == 'text':
-            # 텍스트 모달리티: 입력 data는 이미 [B, T, embed_dim] 형태라고 가정
-            if isinstance(data, dict):
-                if "input_embeds" in data:
-                    x_flat = data["input_embeds"]
-                else:
-                    raise ValueError("For text modality, expected 'input_embeds' key in input dictionary.")
-            else:
-                x_flat = data # 이미 tokenized되어 평탄한 형태라고 가정
-        else:
-            # 이미지 모달리티: [B, C, H, W] -> [B, H, W, C]
-            if data.ndim == 4:
-                data = data.permute(0, 2, 3, 1)
-            b, *axis, _ = data.shape
-            assert len(axis) == self.input_axis, 'input data must have the right number of axis'
-            if self.fourier_encode_data:
-                axis_pos = [torch.linspace(-1., 1., steps=size, device=data.device, dtype=data.dtype) for size in axis]
-                pos = torch.stack(torch.meshgrid(*axis_pos, indexing='ij'), dim=-1)
-                enc_pos = fourier_encode(pos, self.max_freq, self.num_freq_bands)
-                enc_pos = rearrange(enc_pos, '... n d -> ... (n d)')
-                enc_pos = repeat(enc_pos, '... -> b ...', b=b)
-                data = torch.cat((data, enc_pos), dim=-1)
-            x_flat = rearrange(data, 'b ... d -> b (...) d')
+        if data.ndim == 4:
+            data = data.permute(0, 2, 3, 1)
 
-        # 공통 입력 투영
-        x_proj = self.input_projection(x_flat)  # [B, num_tokens, 512]
-        b = x_proj.shape[0]
-        x = repeat(self.latents, 'n d -> b n d', b=b)
+        b, *axis, _, device, dtype = *data.shape, data.device, data.dtype
+        assert len(axis) == self.input_axis, 'input data must have the right number of axis'
 
-        # Attention layers (공통)
+        if self.fourier_encode_data:
+            # calculate fourier encoded positions in the range of [-1, 1], for all axis
+
+            axis_pos = list(map(lambda size: torch.linspace(-1., 1., steps=size, device=device, dtype=dtype), axis))
+            pos = torch.stack(torch.meshgrid(*axis_pos, indexing = 'ij'), dim = -1)
+            enc_pos = fourier_encode(pos, self.max_freq, self.num_freq_bands)
+            enc_pos = rearrange(enc_pos, '... n d -> ... (n d)')
+            enc_pos = repeat(enc_pos, '... -> b ...', b = b)
+
+            data = torch.cat((data, enc_pos), dim = -1)
+
+        # concat to channels of data and flatten axis
+
+        data = rearrange(data, 'b ... d -> b (...) d')
+
+        x = repeat(self.latents, 'n d -> b n d', b = b)
+
+        # layers
+
         for cross_attn, cross_ff, self_attns in self.layers:
-            x = cross_attn(x, context=x_proj, mask=mask) + x
+            x = cross_attn(x, context = data, mask = mask) + x
             x = cross_ff(x) + x
+
             for self_attn, self_ff in self_attns:
                 x = self_attn(x) + x
                 x = self_ff(x) + x
 
+        # allow for fetching embeddings
+
         if return_embeddings:
             return x
+
+        # to logits
 
         if isinstance(self.to_logits, nn.Identity):
             features = x.mean(dim=1)  # [B, latent_dim]
@@ -296,8 +289,7 @@ class perceiver(nn.Module):
             return self.classifier(features)
         else:
             return self.to_logits(x)
-
-            #return self.to_logits(x)
+        #return self.to_logits(x)
     
     def _initialize_weights(self):
         for m in self.modules():
@@ -336,3 +328,59 @@ class perceiver(nn.Module):
         """Change the active classifier."""
         assert dataset in self.datasets
         self.classifier = self.classifiers[self.datasets.index(dataset)]
+
+class combined_perceiver(nn.Module):
+    def __init__(self, input_dim, dataset_history, dataset2num_classes):
+        super(combined_perceiver, self).__init__()
+        self.input_projection = nn.Linear(input_dim, 3*32*32)
+        self.perceiver = perceiver(input_channels=3,
+                                    input_axis=2,
+                                    num_freq_bands=6,
+                                    depth=4,
+                                    max_freq=10,
+                                    num_latents=512,
+                                    latent_dim=256,
+                                    cross_heads=1,
+                                    latent_heads=8,
+                                    cross_dim_head=64,
+                                    latent_dim_head=64,
+                                    attn_dropout=0.,
+                                    ff_dropout=0.,
+                                    weight_tie_layers=False,
+                                    fourier_encode_data=True,
+                                    self_per_cross_attn=1,
+                                    final_classifier_head=False,
+                                    dataset_history=dataset_history,
+                                    dataset2num_classes=dataset2num_classes)
+    
+    def forward(self, x):
+        x = self.input_projection(x)
+        x = x.view(-1, 3, 32, 32)
+        x = self.perceiver(x)
+        return x
+    
+    def add_dataset(self, dataset, num_classes):
+        return self.perceiver.add_dataset(dataset, num_classes)
+    
+    def set_dataset(self, dataset):
+        return self.perceiver.set_dataset(dataset)
+    
+    @property
+    def datasets(self):
+        return self.perceiver.datasets
+    
+    @property
+    def dataset2num_classes(self):
+        return self.perceiver.dataset2num_classes
+    
+    @property
+    def classifiers(self):
+        return self.perceiver.classifiers
+    
+    @property
+    def classifier(self):
+        return self.perceiver.classifier
+    
+    @classifier.setter
+    def classifier(self, value):
+        self.perceiver.classifier = value
