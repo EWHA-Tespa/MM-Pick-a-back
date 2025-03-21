@@ -226,7 +226,21 @@ def main():
             weight_tie_layers=False,
             decoder_ff=True
         )
-    else:
+    elif args.arch == "beit3":
+        from packnet_models.beit3 import _get_base_config
+        config = _get_base_config(img_size=args.img_size if hasattr(args, "img_size") else 224,
+                            patch_size=16, 
+                            encoder_embed_dim=768,  
+                            encoder_attention_heads=12,
+                            encoder_ffn_embed_dim=3072,
+                            encoder_layers=12)
+        model = packnet_models.BEiT3ForImageClassification(
+                    config,
+                    num_classes=args.num_classes, 
+                    dataset_history=dataset_history, 
+                    dataset2num_classes=dataset2num_classes
+                )
+    else:    
         print('Error!')
         sys.exit(0)
 

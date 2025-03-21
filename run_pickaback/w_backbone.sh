@@ -31,22 +31,19 @@ baseline_file="logs_${ARCH}/baseline_${DATASET_CONFIG}_acc.txt"
 checkpoints_name="checkpoints_${ARCH}"
 PICKABACK_CSV="pickaback_${DATASET_CONFIG}_result.csv"
 
-# CSV 파일의 첫 행(헤더)을 건너뛰고, 두 번째 행부터 읽습니다.
 tail -n +2 "$PICKABACK_CSV" | while IFS=',' read -r csv_target_id csv_task_id; do
-    # CSV에서 읽은 값에서 CR, 따옴표, 불필요한 공백 제거
+
     target_id=$(echo "$csv_target_id" | tr -d '\r"' | xargs)
     task_id=$(echo "$csv_task_id" | tr -d '\r"' | xargs)
 
     echo "Starting training for task_id=$task_id, target_id=$target_id"
 
-    # 각각 get_dataset_name.py를 호출하여 dataset 이름을 가져옵니다.
     DATASET_TASK=$(python3 get_dataset_name.py $DATASET_CONFIG $task_id)
     DATASET_TARGET=$(python3 get_dataset_name.py $DATASET_CONFIG $target_id)
 
     echo "DATASET_TASK: $DATASET_TASK"
     echo "DATASET_TARGET: $DATASET_TARGET"
 
-    # 네트워크 폭 초기화
     NETWORK_WIDTH_MULTIPLIER=$DEFAULT_NETWORK_WIDTH_MULTIPLIER
 
     state=2
@@ -58,15 +55,15 @@ tail -n +2 "$PICKABACK_CSV" | while IFS=',' read -r csv_target_id csv_task_id; d
            --lr $INIT_LR \
            --lr_mask $LR_MASK \
            --weight_decay 4e-5 \
-           --save_folder $checkpoints_name/$version_name/$ARCH/${DATASET_TASK}/${DATASET_TARGET}/scratch \
-           --load_folder $checkpoints_name/$single_version_name/$ARCH/${DATASET_TASK}/gradual_prune \
+           --save_folder $checkpoints_name/$version_name/$ARCH/${DATASET_CONFIG}/${DATASET_TASK}/${DATASET_TARGET}/scratch \
+           --load_folder $checkpoints_name/$single_version_name/$ARCH/${DATASET_CONFIG}/${DATASET_TASK}/gradual_prune \
            --epochs $FINETUNE_EPOCHS \
            --mode finetune \
            --network_width_multiplier $NETWORK_WIDTH_MULTIPLIER \
            --max_allowed_network_width_multiplier $MAX_NETWORK_WIDTH_MULTIPLIER \
-           --pruning_ratio_to_acc_record_file $checkpoints_name/$version_name/$ARCH/${DATASET_TASK}/${DATASET_TARGET}/gradual_prune/record.txt \
+           --pruning_ratio_to_acc_record_file $checkpoints_name/$version_name/$ARCH/${DATASET_CONFIG}/${DATASET_TASK}/${DATASET_TARGET}/gradual_prune/record.txt \
            --jsonfile $baseline_file \
-           --log_path $checkpoints_name/$version_name/$ARCH/${DATASET_TASK}/${DATASET_TARGET}/train.log \
+           --log_path $checkpoints_name/$version_name/$ARCH/${DATASET_CONFIG}/${DATASET_TASK}/${DATASET_TARGET}/train.log \
            --total_num_tasks $TOTAL_NUM_TASKS \
            --seed $seed
 

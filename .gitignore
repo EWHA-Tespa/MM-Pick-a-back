@@ -3,8 +3,15 @@ packnet_models_pickaback/__pycache__/*
 utils/__pycache__/*
 utils_pickaback/*
 checkpoints_perceiver/*
+checkpoints_perceiver_io/*
+checkpoints_beit3/*
 checkpoints_perceiver/CPG_single_scratch_woexp/perceiver/*
+checkpoints_perceiver/CPG_single_scratch_woexp/perceiver_io/*
+checkpoints_perceiver/CPG_single_scratch_woexp/beit3/*
 checkpoints_lenet5/*
 logs_perceiver/*
+logs_lenet5/*
+logs_perceiver_io/*
+logs_beit3/*
 models/__pycache__/
 wandb/*

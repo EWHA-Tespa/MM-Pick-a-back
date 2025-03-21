@@ -10,8 +10,8 @@ fi
 
 DATASET_CONFIG=$1
 
-GPU_ID=0
-ARCH='perceiver'
+GPU_ID=4
+ARCH='perceiver_io'
 FINETUNE_EPOCHS=100
 seed=2
 EXPNAME='baseline'

@@ -6,3 +6,4 @@ from .efficientnet import *
 from .spherenet import *
 from .perceiver import *
 from .perceiver_io import *
+from .beit3 import *
