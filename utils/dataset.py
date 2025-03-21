@@ -96,7 +96,10 @@ class TextDataset(Dataset):
         # encoding = {k: v.squeeze(0) for k, v in encoding.items()}
         with torch.no_grad():
             outputs = bert_model(**encoding)
-        text_embedding = outputs.last_hidden_state.squeeze(0)
+            text_embedding = outputs.last_hidden_state.mean(dim=1)
+        text_embedding = text_embedding.squeeze(0)
+        # text_embedding = outputs.last_hidden_state.squeeze(0)
+        
         # text_embedding = text_embedding.unsqueeze(1).repeat(1,3,1)
         # text_embedding = text_embedding.view(-1, 3, 16, 16)
         # with torch.no_grad():
