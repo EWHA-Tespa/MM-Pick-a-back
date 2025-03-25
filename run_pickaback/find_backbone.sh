@@ -15,7 +15,7 @@ ARCH='perceiver'
 
 for TARGET_ID in {1..12}; do
     echo "Find backbone for task $TARGET_ID"
-    CUDA_VISIBLE_DEVICES=$GPU_ID LOG_FILE=$LOG_FILE python3 pickaback_cifar100.py --dataset_config $DATASET_NAME \
+    CUDA_VISIBLE_DEVICES=$GPU_ID LOG_FILE=$LOG_FILE python3 pickaback_MM.py --dataset_config $DATASET_NAME \
                 --arch $ARCH \
                 --target_id $TARGET_ID
 done

@@ -256,12 +256,18 @@ def main():
         model = models.__dict__[args.arch](custom_cfg, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes,
             network_width_multiplier=args.network_width_multiplier, shared_layer_info=shared_layer_info)
     elif args.arch == 'perceiver':
+        image_input_channels=3
+        image_input_axis=2
+        text_input_channels=768
+        text_input_axis=1
         model = models.__dict__[args.arch](
-                                    input_channels=3,
-                                    input_axis=2,
                                     num_freq_bands=6,
-                                    depth=4,
+                                    depth=5,
                                     max_freq=10,
+                                    image_input_channels=image_input_channels,
+                                    image_input_axis=image_input_axis,
+                                    text_input_channels=text_input_channels,
+                                    text_input_axis=text_input_axis,
                                     num_latents=256,
                                     latent_dim=512,
                                     cross_heads=1,
@@ -275,8 +281,8 @@ def main():
                                     self_per_cross_attn=1,
                                     final_classifier_head=False,
                                     dataset_history=dataset_history,
-                                    dataset2num_classes=dataset2num_classes,
-                                    modality=args.modality)
+                                    dataset2num_classes=dataset2num_classes)
+        model.set_modality(args.modality)
     elif args.arch == 'perceiver_io':
         model_class = getattr(models.perceiver_io, "PerceiverIO", None)
         model = model_class(depth=4, dim=512, queries_dim=512, num_latents=256, latent_dim=512, cross_heads=1, latent_heads=8, cross_dim_head=64, latent_dim_head=64, init_weights=True, datasets=True, weight_tie_layers=False, decoder_ff=True, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)

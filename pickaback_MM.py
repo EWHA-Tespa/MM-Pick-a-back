@@ -20,6 +20,28 @@ from torch.nn.parameter import Parameter
 
 import yaml
 
+def get_kv_modules(perceiver_model, modality):
+    kv_list = []
+    for layer in perceiver_model.layers:
+        cross_attn = layer[0]  # PreNorm wrapping MultiModalAttention
+        if modality == 'image':
+            kv_list.append(cross_attn.fn.to_kv_image)
+        elif modality == 'text':
+            kv_list.append(cross_attn.fn.to_kv_text)
+        else:
+            raise ValueError("modality must be 'image' or 'text'")
+    return kv_list
+
+def set_kv_modules(perceiver_model, new_kv_list, modality):
+    for layer, new_kv in zip(perceiver_model.layers, new_kv_list):
+        cross_attn = layer[0]
+        if modality == 'image':
+            cross_attn.fn.to_kv_image = new_kv
+        elif modality == 'text':
+            cross_attn.fn.to_kv_text = new_kv
+        else:
+            raise ValueError("modality must be 'image' or 'text'")
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--arch', type=str, default='lenet5', choices=['lenet5', 'perceiver'])
 parser.add_argument('--dataset', type=str, default='', help='Name of dataset (or subfolder for datasets with subfolders)')
@@ -375,9 +397,22 @@ for task_id in range(start_index, num_classes_in_config + 1):
         if manager.cuda:
             data1, target1 = data1.cuda(), target1.cuda()
             data2, target2 = data2.cuda(), target2.cuda()
-            inputs = np.concatenate([data1.cpu(), data2.cpu()])
-            outputs1 = manager.model(torch.Tensor(inputs).cuda()).to('cpu').tolist()
-            outputs2 = manager2.model(torch.Tensor(inputs).cuda()).to('cpu').tolist()
+            # inputs = np.concatenate([data1.cpu(), data2.cpu()])
+            # outputs1 = manager.model(torch.Tensor(inputs).cuda()).to('cpu').tolist()
+            # outputs2 = manager2.model(torch.Tensor(inputs).cuda()).to('cpu').tolist()
+            outputs1_1 = manager.model(torch.Tensor(target1).cuda()).to('cpu').tolist()
+            outputs2_2 = manager2.model(torch.Tensor(target2).cuda()).to('cpu').tolist()
+
+            ### kv projection layer 바꿔서 나온 output ###
+            NewModel1 = copy.deepcopy(manager.model)
+            NewModel2 = copy.deepcopy(manager2.model)
+            kv_A = get_kv_modules(manager.model, modality='image')
+            kv_B = get_kv_modules(manager2.model, modality='text')
+            set_kv_modules(NewModel1, kv_B, modality='image')
+            set_kv_modules(NewModel2, kv_A, modality='text')
+
+            outputs_new1_2 = NewModelA(data2)
+            outputs_new2_1 = NewModelB(data1)
 
     initial_outputs1 = copy.deepcopy(outputs1)
     initial_outputs2 = copy.deepcopy(outputs2)

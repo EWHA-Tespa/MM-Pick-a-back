@@ -399,7 +399,7 @@ class perceiver(nn.Module):
                 # nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.xavier_uniform_(m.weight)
                 if m.bias is not None:
-                    nn.init.constant(m.bias, 0)
+                    nn.init.constant_(m.bias, 0)
 
     def _reconstruct_classifiers(self):
         for dataset, num_classes in self.dataset2num_classes.items():
