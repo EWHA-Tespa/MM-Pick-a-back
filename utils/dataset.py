@@ -1,15 +1,14 @@
 import os
 import yaml
 import torch
-import clip
 
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
-from transformers import BertModel, BertTokenizer, DistilBertTokenizer, DistilBertModel
+from transformers import BertModel, BertTokenizer
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-clip_model, clip_preprocess = clip.load("ViT-B/32", device=device)
+bert_model = BertModel.from_pretrained("bert-base-uncased")
+bert_model.eval()
 
 config_path = os.path.join(os.path.dirname(__file__), 'dataset_config.yaml')
 with open(config_path, 'r') as f:
@@ -65,37 +64,19 @@ def get_transforms(cfg, dataset_name=None, is_train=True):
         
     return transforms.Compose(transform_list)
 
-class CLIPImageDataset(Dataset):
-    def __init__(self, root_dir, is_train=True):
-        # ImageFolder를 사용하고, CLIP 전처리(preprocess)를 transform으로 지정합니다.
-        self.dataset = datasets.ImageFolder(root=root_dir, transform=clip_preprocess)
-    
-    def __len__(self):
-        return len(self.dataset)
-    
-    def __getitem__(self, idx):
-        image, label = self.dataset[idx]
-        # image: 이미 CLIP 전처리(preprocess) 적용된 tensor ([3, H, W])
-        with torch.no_grad():
-            image_embedding = clip_model.encode_image(image.unsqueeze(0).to(device))
-        image_embedding = image_embedding.cpu().float()  # 최종 shape: [512]
-        return image_embedding, label
-
-
-class CLIPTextDataset(Dataset):
-    def __init__(self, root_dir, max_length=77, is_train=True):
-        """
-        - root_dir: 텍스트 파일들이 클래스별 서브폴더에 저장되어 있음.
-        - CLIP의 tokenize는 기본적으로 max_length=77을 사용합니다.
-        """
+class TextDataset(Dataset):
+    def __init__(self, root_dir, tokenizer_name='bert-base-uncased', max_length=128, is_train=True):
+        self.root_dir = root_dir
         self.samples = []  # (filepath, label) 튜플 리스트
+        self.tokenizer = BertTokenizer.from_pretrained(tokenizer_name)
         self.max_length = max_length
-        # 각 서브폴더를 클래스(label)로 간주 (알파벳 순서 기준)
+        
+        # 각 서브폴더를 클래스(label)로 간주
         for label, class_name in enumerate(sorted(os.listdir(root_dir))):
             class_dir = os.path.join(root_dir, class_name)
             if os.path.isdir(class_dir):
                 for fname in os.listdir(class_dir):
-                    if fname.endswith('.txt'):
+                    if fname.endswith('.txt'):  # 텍스트 파일만 로드한다고 가정
                         self.samples.append((os.path.join(class_dir, fname), label))
     
     def __len__(self):
@@ -105,13 +86,19 @@ class CLIPTextDataset(Dataset):
         filepath, label = self.samples[idx]
         with open(filepath, 'r', encoding='utf-8') as f:
             text = f.read().strip()
-        # CLIP의 tokenize를 사용하여 텍스트 토큰 생성 (반환 tensor shape: [1, token_length])
-        tokens = clip.tokenize([text], truncate=True).squeeze(0)
-        # CLIP 텍스트 인코더에 입력하기 위해 device로 이동시키고, 배치 차원 추가
+        encoding = self.tokenizer(text,
+                                padding='max_length',
+                                truncation=True,
+                                max_length=self.max_length,
+                                return_tensors='pt')
+        # encoding = {k: v.squeeze(0) for k, v in encoding.items()}
+
         with torch.no_grad():
-            text_embedding = clip_model.encode_text(tokens.unsqueeze(0).to(device))
-        text_embedding = text_embedding.cpu().float()  # [1, 512]
-        return text_embedding, label
+            input_embeds = bert_model.embeddings(encoding["input_ids"])
+        input_embeds = input_embeds.squeeze(0)
+        #encoding["input_embeds"] = input_embeds
+        return input_embeds, label
+
 def train_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_memory=True):
     """
     config_name: 'cifar100' or 'n24news' 등
@@ -128,14 +115,14 @@ def train_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_
     if is_text:
         train_path = os.path.join(cfg.get('text_train_path', cfg['text_train_path']), dataset_name)
         max_length = cfg.get('text_max_length', 128)
-        train_dataset = CLIPTextDataset(train_path, max_length=max_length, is_train=True)
+        train_dataset = TextDataset(train_path, max_length=max_length, is_train=True)
     else:
         if dataset_name is not None and cfg.get("subfolder", False):
             train_path = os.path.join(cfg['train_path'], dataset_name)
         else:
             train_path = cfg['train_path']
-        
-        train_dataset = CLIPImageDataset(train_path, is_train=True)
+        train_transform = get_transforms(cfg, dataset_name=dataset_name, is_train=True)
+        train_dataset = datasets.ImageFolder(train_path, transform=train_transform)
     
     return torch.utils.data.DataLoader(
         train_dataset,
@@ -156,13 +143,14 @@ def val_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_me
     if is_text:
         test_path = os.path.join(cfg.get('text_test_path', cfg['text_test_path']), dataset_name)
         max_length = cfg.get('text_max_length', 128)
-        val_dataset = CLIPTextDataset(test_path, max_length=max_length, is_train=False)
+        val_dataset = TextDataset(test_path, max_length=max_length, is_train=False)
     else:
         if dataset_name is not None and cfg.get("subfolder", False):
             test_path = os.path.join(cfg['test_path'], dataset_name)
         else:
             test_path = cfg['test_path']
-        val_dataset = CLIPImageDataset(test_path, is_train=False)
+        val_transform = get_transforms(cfg, dataset_name=dataset_name, is_train=False)
+        val_dataset = datasets.ImageFolder(test_path, transform=val_transform)
     
     return torch.utils.data.DataLoader(
         val_dataset,

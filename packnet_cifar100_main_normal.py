@@ -189,13 +189,18 @@ def main():
     elif args.arch == 'resnet50':
         model = packnet_models.__dict__[args.arch](dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
     elif args.arch == 'perceiver':
-        # if args.modality != 'image':
+        image_input_channels=3
+        image_input_axis=2
+        text_input_channels=768
+        text_input_axis=1
         model = packnet_models.__dict__[args.arch](
-                                        input_channels=512,
-                                        input_axis=1,
                                         num_freq_bands=6,
-                                        depth=4,
+                                        depth=5,
                                         max_freq=10,
+                                        image_input_channels=image_input_channels,
+                                        image_input_axis=image_input_axis,
+                                        text_input_channels=text_input_channels,
+                                        text_input_axis=text_input_axis,
                                         num_latents=256,
                                         latent_dim=512,
                                         cross_heads=1,
@@ -210,10 +215,7 @@ def main():
                                         final_classifier_head=False,
                                         dataset_history=dataset_history,
                                         dataset2num_classes=dataset2num_classes)
-        # else:
-        #     model = packnet_models.combined_perceiver(input_dim=768,
-        #                                             dataset_history=dataset_history,
-        #                                             dataset2num_classes=dataset2num_classes) # 여기다 차원입력
+        model.set_modality(args.modality)
     elif args.arch == 'perceiver_io':
         perceiver_class = packnet_models.perceiver_io.PerceiverIO  
         model = perceiver_class(
