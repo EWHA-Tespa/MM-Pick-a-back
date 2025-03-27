@@ -311,7 +311,7 @@ class perceiver(nn.Module):
         return_embeddings = False,
         modality='image',
     ):
-        if modality is not None:
+        if modality is None:
             modality = self.current_modality
 
         if modality == 'image':

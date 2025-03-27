@@ -89,27 +89,29 @@ class TextDataset(Dataset):
         with torch.no_grad():
             input_embeds = bert_model.embeddings(encoding["input_ids"])
         input_embeds = input_embeds.squeeze(0)
-        encoding["input_embeds"] = input_embeds
-        return encoding, label
+        #encoding["input_embeds"] = input_embeds
+        return input_embeds, label
 
-def train_loader(config_name, batch_size, dataset_name=None, sub_dataset=None, num_workers=4, pin_memory=True):
+def train_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_memory=True):
+    """
+    config_name: 'cifar100' or 'n24news' 등
+    dataset_name: subfolder명 (ex: 'fish', 'flowers'), 없으면 None
+    """
     cfg = dataset_config[config_name]
     
+    # modality 판단: 만약 현재 dataset_name이 text modality에 해당하면?
     is_text = False
     if dataset_name is not None and 'modality' in cfg:
         if dataset_name in cfg['modality'].get('text_groups', []):
             is_text = True
 
     if is_text:
-        if sub_dataset is not None and cfg.get("subfolder", False):
-            train_path = os.path.join(cfg.get('text_train_path', cfg['train_path']), dataset_name)
-            max_length = cfg.get('text_max_length', 128)
-            train_dataset = TextDataset(train_path, max_length=max_length, is_train=True)
-        else:
-            train_path = cfg['text_train_path']
+        train_path = os.path.join(cfg.get('text_train_path', cfg['text_train_path']), dataset_name)
+        max_length = cfg.get('text_max_length', 128)
+        train_dataset = TextDataset(train_path, max_length=max_length, is_train=True)
     else:
-        if sub_dataset is not None and cfg.get("subfolder", False):
-            train_path = os.path.join(cfg['train_path'], sub_dataset)
+        if dataset_name is not None and cfg.get("subfolder", False):
+            train_path = os.path.join(cfg['train_path'], dataset_name)
         else:
             train_path = cfg['train_path']
         train_transform = get_transforms(cfg, dataset_name=dataset_name, is_train=True)
@@ -123,29 +125,26 @@ def train_loader(config_name, batch_size, dataset_name=None, sub_dataset=None, n
         pin_memory=pin_memory
     )
 
-
-def val_loader(config_name, batch_size, dataset_name=None, sub_dataset=None, num_workers=4, pin_memory=True):
+def val_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_memory=True):
     cfg = dataset_config[config_name]
-
+    
     is_text = False
     if dataset_name is not None and 'modality' in cfg:
         if dataset_name in cfg['modality'].get('text_groups', []):
             is_text = True
 
     if is_text:
-        if sub_dataset is not None and cfg.get("subfolder", False):
-            test_path = os.path.join(cfg.get('text_test_path', cfg['text_test_path']), dataset_name)
-            max_length = cfg.get('text_max_length', 128)
-            val_dataset = TextDataset(train_path, max_length=max_length, is_train=False)
-        else:
-            test_path = cfg['text_test_path']
+        test_path = os.path.join(cfg.get('text_test_path', cfg['text_test_path']), dataset_name)
+        max_length = cfg.get('text_max_length', 128)
+        val_dataset = TextDataset(test_path, max_length=max_length, is_train=False)
     else:
-        if sub_dataset is not None and cfg.get("subfolder", False):
-            test_path = os.path.join(cfg['test_path'], sub_dataset)
+        if dataset_name is not None and cfg.get("subfolder", False):
+            test_path = os.path.join(cfg['test_path'], dataset_name)
         else:
             test_path = cfg['test_path']
         val_transform = get_transforms(cfg, dataset_name=dataset_name, is_train=False)
         val_dataset = datasets.ImageFolder(test_path, transform=val_transform)
+    
     return torch.utils.data.DataLoader(
         val_dataset,
         batch_size=batch_size,

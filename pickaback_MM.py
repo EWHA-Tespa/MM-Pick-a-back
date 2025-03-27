@@ -48,6 +48,7 @@ parser.add_argument('--dataset', type=str, default='', help='Name of dataset (or
 parser.add_argument('--dataset_config', type=str, default='n24news', choices=["cifar100", "n24news", "mscoco", "cub", "oxford"],
                    help='Dataset configuration key defined in dataset_config.yaml (e.g., cifar100, n24news)')
 parser.add_argument('--target_id', type=int, default=1)
+parser.add_argument('--modality', type=str, default='image', help='Modality of data')
 args = parser.parse_args()
 
 print(f"Architecture: {args.arch}")
@@ -69,7 +70,7 @@ if not dataset_config:
 
 # 데이터셋 설정에서 DATASETS 및 num_classes 추출
 DATASETS = dataset_config["DATASETS"]
-num_classes_in_config = dataset_config["num_classes"]
+num_classes_in_config = dataset_config["num_classes"] * 2 # 왜 num_class가 그룹개수인거지...?
 
 start_index = 1
 
@@ -104,7 +105,7 @@ logfile = ''
 initial_from_task = ''
 
 ################################
-val_batch_size = 50
+val_batch_size = 32              # CUDA Out of memory 뜨면 여길 바꿀 것
 epsilon = 0.1
 max_iterations = 100
 ################################
@@ -122,6 +123,16 @@ for task_id in range(start_index, num_classes_in_config + 1):
 
     if task_id == target_id:
         continue
+    
+    if target_id <= 6:
+        target_modality = 'image'
+    else:
+        target_modality = 'text'
+
+    if task_id <= 6:
+        task_modality = 'image'
+    else:
+        task_modality = 'text'
     
     dataset_name = DATASETS[task_id]
     dataset_name_target = DATASETS[target_id]
@@ -296,6 +307,8 @@ for task_id in range(start_index, num_classes_in_config + 1):
                                     self_per_cross_attn=1,
                                     final_classifier_head=False,
                                     dataset_history=dataset_history2, dataset2num_classes=dataset2num_classes2)
+        model.set_modality(target_modality)
+        model2.set_modality(task_modality)
     elif arch == 'perceiver_io':
         perceiverIO_class = packnet_models.perceiver_io.PerceiverIO  
         model = perceiverIO_class(depth=4, dim=512, queries_dim=512, num_latents=256, latent_dim=512, cross_heads=1, latent_heads=8, cross_dim_head=64, latent_dim_head=64, weight_tie_layers=False, decoder_ff=True, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
@@ -351,10 +364,10 @@ for task_id in range(start_index, num_classes_in_config + 1):
     model = model.cuda()
     model2 = model2.cuda()
 
-    train_loader = train_loader_fn(args.dataset_config, batch_size, sub_dataset=dataset_name)
-    val_loader = val_loader_fn(args.dataset_config, val_batch_size, sub_dataset=dataset_name_test)
-    train_loader2 = train_loader_fn(args.dataset_config, batch_size, sub_dataset=dataset_name_target)
-    val_loader2 = val_loader_fn(args.dataset_config, val_batch_size, sub_dataset=dataset_name_test_target)
+    train_loader = train_loader_fn(args.dataset_config, batch_size)
+    val_loader = val_loader_fn(args.dataset_config, val_batch_size)
+    train_loader2 = train_loader_fn(args.dataset_config, batch_size)
+    val_loader2 = val_loader_fn(args.dataset_config, val_batch_size)
 
     if save_folder != load_folder:
         start_epoch = 0
@@ -400,19 +413,22 @@ for task_id in range(start_index, num_classes_in_config + 1):
             # inputs = np.concatenate([data1.cpu(), data2.cpu()])
             # outputs1 = manager.model(torch.Tensor(inputs).cuda()).to('cpu').tolist()
             # outputs2 = manager2.model(torch.Tensor(inputs).cuda()).to('cpu').tolist()
-            outputs1_1 = manager.model(torch.Tensor(target1).cuda()).to('cpu').tolist()
-            outputs2_2 = manager2.model(torch.Tensor(target2).cuda()).to('cpu').tolist()
+            outputs1_1 = manager.model(data1.cuda()).to('cpu').numpy()
+            outputs2_2 = manager2.model(data2.cuda()).to('cpu').numpy()
 
             ### kv projection layer 바꿔서 나온 output ###
             NewModel1 = copy.deepcopy(manager.model)
             NewModel2 = copy.deepcopy(manager2.model)
-            kv_A = get_kv_modules(manager.model, modality='image')
-            kv_B = get_kv_modules(manager2.model, modality='text')
-            set_kv_modules(NewModel1, kv_B, modality='image')
-            set_kv_modules(NewModel2, kv_A, modality='text')
+            kv_1 = get_kv_modules(manager.model, modality=target_modality)
+            kv_2 = get_kv_modules(manager2.model, modality=task_modality)
+            set_kv_modules(NewModel1, kv_2, modality=task_modality)
+            set_kv_modules(NewModel2, kv_1, modality=target_modality)
 
-            outputs_new1_2 = NewModelA(data2)
-            outputs_new2_1 = NewModelB(data1)
+            outputs1_2 = NewModel1(data2.cuda()).to('cpu').numpy()
+            outputs2_1 = NewModel2(data1.cuda()).to('cpu').numpy()
+
+            outputs1 = np.concatenate([outputs1_1, outputs1_2], axis=0).tolist()
+            outputs2 = np.concatenate([outputs2_1, outputs2_2], axis=0).tolist()
 
     initial_outputs1 = copy.deepcopy(outputs1)
     initial_outputs2 = copy.deepcopy(outputs2)
@@ -434,85 +450,109 @@ for task_id in range(start_index, num_classes_in_config + 1):
         odist2 = np.mean(spatial.distance.cdist(outs2, initial_outputs2).diagonal())
         return odist1 * odist2 * m1 * m2
 
-    input_shape = inputs[0].shape
-    n_inputs = inputs.shape[0]
-    ndims = np.prod(input_shape)
+    # input_shape = inputs[0].shape
+    # n_inputs = inputs.shape[0]
+    # ndims = np.prod(input_shape)
+    inputs1 = data1.cpu().numpy().copy()
+    inputs2 = data2.cpu().numpy().copy()
 
-    score = evaluate_inputs(inputs)
-    for iteration in range(max_iterations):
-        
-        mutation_pos = np.random.randint(0, ndims)
-        mutation = np.zeros(ndims).astype(np.float32)
-        mutation[mutation_pos] = epsilon
-        mutation = np.reshape(mutation, input_shape)
-        mutation_batch = np.zeros(shape=inputs.shape).astype(np.float32)
-        mutation_idx = np.random.randint(0, n_inputs)
-        mutation_batch[mutation_idx] = mutation
+    input_shape1 = inputs1[0].shape
+    n_inputs1 = inputs1.shape[0]
+    ndims1 = np.prod(input_shape1)
 
-        mutate_right_inputs = inputs + mutation_batch
-        mutate_right_score = evaluate_inputs(mutate_right_inputs)
-        mutate_left_inputs = inputs - mutation_batch
-        mutate_left_score = evaluate_inputs(mutate_left_inputs)
+    input_shape2 = inputs2[0].shape
+    n_inputs2 = inputs2.shape[0]
+    ndims2 = np.prod(input_shape2)    
+    
+    def mutate_inputs(inputs, input_shape, n_inputs, ndims, evaluate_fn, epsilon, max_iterations):
+        score = evaluate_fn(inputs)
+        for iteration in range(max_iterations):
+            torch.cuda.empty_cache()
+            mutation_pos = np.random.randint(0, ndims)
+            mutation = np.zeros(ndims, dtype=np.float32)
+            mutation[mutation_pos] = epsilon
+            mutation = np.reshape(mutation, input_shape)
+            mutation_batch = np.zeros(inputs.shape, dtype=np.float32)
+            mutation_idx = np.random.randint(0, n_inputs)
+            mutation_batch[mutation_idx] = mutation
 
-        if mutate_right_score <= score and mutate_left_score <= score:
-            continue
-        if mutate_right_score > mutate_left_score:
-            inputs = mutate_right_inputs
-            score = mutate_right_score
-        else:
-            inputs = mutate_left_inputs
-            score = mutate_left_score
+            mutate_right = inputs + mutation_batch
+            mutate_left  = inputs - mutation_batch
+            score_right = evaluate_fn(mutate_right)
+            score_left  = evaluate_fn(mutate_left)
+            
+            if score_right <= score and score_left <= score:
+                continue
+            if score_right > score_left:
+                inputs = mutate_right
+                score = score_right
+            else:
+                inputs = mutate_left
+                score = score_left
+        return inputs, score
 
-    profiling_inputs = inputs
-    input_metrics_1, input_metrics_2 = input_metrics(profiling_inputs)
+    def evaluate_fn1(x):
+        tensor_x = torch.from_numpy(x).cuda()
+        outs = manager.model(tensor_x).detach().to('cpu').numpy()
+        return np.mean(spatial.distance.cdist(outs, outs))
 
-    def compute_ddv_cos(x_inputs):
-        with torch.no_grad():
-            dists = []
-            outs = manager.model(torch.Tensor(x_inputs).cuda()).to('cpu').tolist()
-            n_pairs = int(len(x_inputs) / 2)
-            for i in range(n_pairs):
-                ya = outs[i]
-                yb = outs[i + n_pairs]
-                dist = spatial.distance.cosine(ya, yb)
-                dists.append(dist)
-            dists2 = []
-            outs2 = manager2.model(torch.Tensor(x_inputs).cuda()).to('cpu').tolist()
-            for i in range(n_pairs):
-                ya = outs2[i]
-                yb = outs2[i + n_pairs]
-                dist = spatial.distance.cosine(ya, yb)
-                dists2.append(dist)
+    def evaluate_fn2(x):
+        tensor_x = torch.from_numpy(x).cuda()
+        outs = manager2.model(tensor_x).detach().to('cpu').numpy()
+        return np.mean(spatial.distance.cdist(outs, outs))
+
+    mutated1, score1 = mutate_inputs(inputs1, input_shape1, n_inputs1, ndims1, evaluate_fn1, epsilon, max_iterations)
+    mutated2, score2 = mutate_inputs(inputs2, input_shape2, n_inputs2, ndims2, evaluate_fn2, epsilon, max_iterations)
+    outputs1 = manager.model(torch.from_numpy(mutated1).cuda()).detach().to('cpu').numpy()
+    outputs2 = manager2.model(torch.from_numpy(mutated2).cuda()).detach().to('cpu').numpy()
+    print(outputs1.shape, outputs2.shape)
+    
+    combined_outputs = np.concatenate([outputs1, outputs2], axis=0)
+    
+    # profiling_inputs = inputs
+    # input_metrics_1, input_metrics_2 = input_metrics(profiling_inputs) # 용도불명. 일단 주석처리리
+
+    def compute_ddv_cos(outputs1, outputs2):
+        dists = []
+        n_pairs = int(len(outputs1) / 2)
+        for i in range(n_pairs):
+            ya = outputs1[i]
+            yb = outputs1[i + n_pairs]
+            dist = spatial.distance.cosine(ya, yb)
+            dists.append(dist)
+        dists2 = []
+        for i in range(n_pairs):
+            ya = outputs2[i]
+            yb = outputs2[i + n_pairs]
+            dist = spatial.distance.cosine(ya, yb)
+            dists2.append(dist)
         return np.array(dists), np.array(dists2)
 
-    def compute_ddv_euc(x_inputs):
-        with torch.no_grad():
-            dists = []
-            outs = manager.model(torch.Tensor(x_inputs).cuda()).to('cpu').tolist()
-            n_pairs = int(len(x_inputs) / 2)
-            for i in range(n_pairs):
-                ya = outs[i]
-                yb = outs[i + n_pairs]
-                dist = spatial.distance.euclidean(ya, yb)
-                dists.append(dist)
-            dists2 = []
-            outs2 = manager2.model(torch.Tensor(x_inputs).cuda()).to('cpu').tolist()
-            for i in range(n_pairs):
-                ya = outs2[i]
-                yb = outs2[i + n_pairs]
-                dist = spatial.distance.euclidean(ya, yb)
-                dists2.append(dist)
+    def compute_ddv_euc(outputs1, outputs2):
+        dists = []
+        n_pairs = int(len(outputs1) / 2)
+        for i in range(n_pairs):
+            ya = outputs1[i]
+            yb = outputs1[i + n_pairs]
+            dist = spatial.distance.euclidean(ya, yb)
+            dists.append(dist)
+        dists2 = []
+        for i in range(n_pairs):
+            ya = outputs2[i]
+            yb = outputs2[i + n_pairs]
+            dist = spatial.distance.euclidean(ya, yb)
+            dists2.append(dist)
         return np.array(dists), np.array(dists2)
 
     def compute_sim_cos(ddv1, ddv2):
         return spatial.distance.cosine(ddv1, ddv2)
 
-    ddv1, ddv2 = compute_ddv_cos(profiling_inputs)
+    ddv1, ddv2 = compute_ddv_cos(outputs1, outputs2)
     ddv_cos_distance = compute_sim_cos(ddv1, ddv2)
     print('DDV cos-cos [%d => %d] %.5f' % (task_id, target_id, ddv_cos_distance))
     ddvcc_list.append(ddv_cos_distance)
 
-    ddv1, ddv2 = compute_ddv_euc(profiling_inputs)
+    ddv1, ddv2 = compute_ddv_euc(outputs1, outputs2)
     ddv_euc_distance = compute_sim_cos(ddv1, ddv2)
     print('DDV euc-cos [%d => %d] %.5f' % (task_id, target_id, ddv_euc_distance))
     ddvec_list.append(ddv_euc_distance)

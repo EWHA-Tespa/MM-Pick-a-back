@@ -96,7 +96,7 @@ ddvec_list = []
 tasks = [] 
 
 # Iterate over the datasets
-for task_id in range(start_index, num_classes_in_config + 1):
+for task_id in range(start_index, 6 + 1):
 
     if task_id == target_id:
         continue
@@ -497,8 +497,8 @@ best_task = tasks[best_idx]
 print('Selected backbone for target ' + str(target_id) +
       ' = (euc) ' + str(best_task))
 
-result_csv = f"pickaback_{args.dataset_config}_result.csv"
-table_csv = f"pickback_{args.dataset_config}_table.csv"
+result_csv = f"pickaback_{args.dataset_config}_result_single_modal.csv"
+table_csv = f"pickback_{args.dataset_config}_table_single_modal.csv"
 
 write_header = not os.path.exists(result_csv)
 with open(result_csv, 'a', newline='') as f:
