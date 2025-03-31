@@ -1,9 +1,18 @@
+from math import pi, log
+from functools import wraps
+
 import torch
 from torch import nn, einsum
 import torch.nn.functional as F
+
 from einops import rearrange, repeat
+from einops.layers.torch import Reduce
 
 # helpers
+
+__all__ = [
+    'perceiver_io'
+]
 
 def exists(val):
     return val is not None
@@ -36,6 +45,33 @@ def dropout_seq(seq, mask, dropout):
         mask = mask[batch_indices, keep_indices] & keep_mask
 
     return seq, mask
+
+# cache_fn
+def cache_fn(f):
+    cache = dict()
+    @wraps(f)
+    def cached_fn(*args, _cache=True, key=None, **kwargs):
+        if not _cache:
+            return f(*args, **kwargs)
+        nonlocal cache
+        if key in cache:
+            return cache[key]
+        result = f(*args, **kwargs)
+        cache[key] = result
+        return result
+    return cached_fn
+
+def fourier_encode(x, max_freq, num_bands = 4):
+    x = x.unsqueeze(-1)
+    device, dtype, orig_x = x.device, x.dtype, x
+
+    scales = torch.linspace(1., max_freq / 2, num_bands, device = device, dtype = dtype)
+    scales = scales[(*((None,) * (len(x.shape) - 1)), Ellipsis)]
+
+    x = x * scales * pi
+    x = torch.cat([x.sin(), x.cos()], dim = -1)
+    x = torch.cat((x, orig_x), dim = -1)
+    return x
 
 # helper classes
 class PreNorm(nn.Module):
@@ -95,18 +131,27 @@ class Attention(nn.Module):
 
         sim = einsum('b i d, b j d -> b i j', q, k) * self.scale
 
+        if exists(mask):
+            mask = rearrange(mask, 'b ... -> b (...)')
+            max_neg_value = -torch.finfo(sim.dtype).max
+            mask = repeat(mask, 'b j -> (b h) () j', h=h)
+            sim.masked_fill_(~mask, max_neg_value)
+
         attn = sim.softmax(dim=-1)
         out = einsum('b i j, b j d -> b i d', attn, v)
         out = rearrange(out, '(b h) n d -> b n (h d)', h=h)
         return self.to_out(out)
 
 # main class
-class PerceiverIO(nn.Module):
+class perceiver_io(nn.Module):
     def __init__(
         self,
         *,
+        num_freq_bands,
         depth,
-        dim,
+        max_freq,
+        input_channels = 3,
+        input_axis = 2,
         queries_dim,
         dataset_history,
         dataset2num_classes,
@@ -114,33 +159,59 @@ class PerceiverIO(nn.Module):
         latent_dim=512,
         cross_heads=1,
         latent_heads=8,
+        num_classes=1000,
         cross_dim_head=64,
         latent_dim_head=64,
         weight_tie_layers=False,
-        decoder_ff=False
+        fourier_encode_data = True,
+        decoder_ff=False,
+        final_classifier_head = True,
     ):
         super().__init__()
+        self.input_axis = input_axis
+        self.num_freq_bands = num_freq_bands
+        self.max_freq = max_freq
+        self.fourier_encode_data = fourier_encode_data
 
         self.datasets = dataset_history
         self.dataset2num_classes = dataset2num_classes
         self.classifiers = []
 
+        fourier_channels = (input_axis * ((num_freq_bands * 2) + 1)) if fourier_encode_data else 0
+        input_dim = fourier_channels + input_channels
+        
         self.latents = nn.Parameter(torch.randn(num_latents, latent_dim))
-        self.input_proj = nn.Linear(3, dim)
-        self.cross_attend_blocks = nn.ModuleList([
-            PreNorm(latent_dim, Attention(latent_dim, dim, heads=cross_heads, dim_head=cross_dim_head), context_dim=dim),
-            PreNorm(latent_dim, FeedForward(latent_dim))
-        ])
+
+        # caching setup
+        get_cross_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, input_dim, heads=cross_heads, dim_head=cross_dim_head), context_dim=input_dim)
+        get_self_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, heads=latent_heads, dim_head=latent_dim_head))
+        get_self_ff = lambda: PreNorm(latent_dim, FeedForward(latent_dim))
+
+        get_self_attn, get_self_ff, get_cross_attn = map(cache_fn, (get_self_attn, get_self_ff, get_cross_attn))
 
         self.layers = nn.ModuleList([])
-        for _ in range(depth):
+
+        # cross attention only once
+        self.cross_attend_blocks = nn.ModuleList([
+            get_cross_attn(_cache=True, key='cross_attn'),
+            get_self_ff(_cache=True, key='cross_ff')
+        ])
+
+        for i in range(depth):
+            cache_args = {'_cache': weight_tie_layers, 'key': f'layer_{i if not weight_tie_layers else 0}'}
             self.layers.append(nn.ModuleList([
-                PreNorm(latent_dim, Attention(latent_dim, heads=latent_heads, dim_head=latent_dim_head)),
-                PreNorm(latent_dim, FeedForward(latent_dim))
+                get_self_attn(**cache_args),
+                get_self_ff(**cache_args)
             ]))
 
         self.decoder_cross_attn = PreNorm(queries_dim, Attention(queries_dim, latent_dim, heads=cross_heads, dim_head=cross_dim_head), context_dim=latent_dim)
         self.decoder_ff = PreNorm(queries_dim, FeedForward(queries_dim)) if decoder_ff else None
+
+        self.to_logits = nn.Sequential(
+            Reduce('b n d -> b d', 'mean'),
+            nn.LayerNorm(latent_dim),
+            nn.Linear(latent_dim, num_classes)
+        ) if final_classifier_head else nn.Identity
 
         self.proj = nn.Linear(latent_dim, 84)
         self._reconstruct_classifiers()
@@ -148,10 +219,25 @@ class PerceiverIO(nn.Module):
     def forward(self, data, mask=None, queries=None):
         if data.ndim == 4:
             data = data.permute(0, 2, 3, 1)
-            data = data.reshape(data.shape[0], -1, data.shape[-1])
-            data = self.input_proj(data)
+            # data = data.reshape(data.shape[0], -1, data.shape[-1])
+            # data = self.input_proj(data)
 
-        b, *_, device = *data.shape, data.device
+        b, *axis, _, device, dtype = *data.shape, data.device, data.dtype
+        assert len(axis) == self.input_axis, 'input data must have the right number of axis'
+
+        if self.fourier_encode_data:
+            # calculate fourier encoded positions in the range of [-1, 1], for all axis
+            axis_pos = list(map(lambda size: torch.linspace(-1, 1., steps=size, device=device, dtype=dtype), axis))
+            pos = torch.stack(torch.meshgrid(*axis_pos, indexing = 'ij'), dim=-1)
+            enc_pos = fourier_encode(pos, self.max_freq, self.num_freq_bands)
+            enc_pos = rearrange(enc_pos, '... n d -> ... (n d)')
+            enc_pos = repeat(enc_pos, '... -> b ...', b=b)
+
+            data = torch.cat((data, enc_pos), dim=-1)
+
+        # cocat to channels of data and flatten axis
+        data = rearrange(data, 'b ... d -> b (...) d')
+        
         x = repeat(self.latents, 'n d -> b n d', b=b)
 
         cross_attn, cross_ff = self.cross_attend_blocks
@@ -171,7 +257,14 @@ class PerceiverIO(nn.Module):
         if exists(self.decoder_ff):
             latents = latents + self.decoder_ff(latents)
 
-        return self.to_logits(latents)
+        if isinstance(self.to_logits, nn.Identity):
+            features = x.mean(dim=1) # [B, latent_dim]
+            features = self.proj(features) # [B, 84]
+            return self.classifier(features)
+        else:
+            return self.to_logits(x)
+
+        # return self.to_logits(latents)
 
     def _reconstruct_classifiers(self):
         for dataset, num_classes in self.dataset2num_classes.items():

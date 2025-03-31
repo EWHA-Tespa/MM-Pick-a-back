@@ -11,12 +11,12 @@ fi
 DATASET_CONFIG=$1
 
 GPU_ID=0
-ARCH='perceiver'
+ARCH='perceiver_io'
 FINETUNE_EPOCHS=100
 seed=2
 EXPNAME='baseline'
 
-for TASK_ID in {1..12}; do  # change according to the number of classes in the dataset
+for TASK_ID in {2..12}; do  # change according to the number of classes in the dataset
     if [ $TASK_ID -le 6 ]; then
         MODALITY='image'
     else

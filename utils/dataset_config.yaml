@@ -99,7 +99,7 @@ mscoco:
   test_path: /data_library/mscoco/image/val
   subfolder: true
   num_classes: 15
-  resize: [224, 224]
+  resize: [64, 64]
   random_horizontal_flip: true
   mean: [0.485, 0.456, 0.406]
   std: [0.229, 0.224, 0.225]
@@ -123,8 +123,8 @@ mscoco:
 
 
 cub:
-  train_path: /data/youlee/data_library/cub_200_2011/image/train
-  test_path: /data/youlee/data_library/cub_200_2011/image/test
+  train_path: /data_library/cub_200_2011/image/train
+  test_path: /data_library/cub_200_2011/image/test
   subfolder: true
   num_classes: 27
   resize: [224, 224]

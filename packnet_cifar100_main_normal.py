@@ -210,10 +210,12 @@ def main():
                                     dataset2num_classes=dataset2num_classes,
                                     modality=args.modality)
     elif args.arch == 'perceiver_io':
-        perceiver_class = packnet_models.perceiver_io.PerceiverIO  
-        model = perceiver_class(
+        model = packnet_models.__dict__[args.arch](
+            num_freq_bands=6,
             depth=4,
-            dim=512, 
+            max_freq=10,
+            input_channels=3,
+            input_axis=2,
             queries_dim=512, 
             dataset_history=dataset_history, 
             dataset2num_classes=dataset2num_classes, 
@@ -224,7 +226,9 @@ def main():
             cross_dim_head=64,
             latent_dim_head=64,
             weight_tie_layers=False,
-            decoder_ff=True
+            fourier_encode_data=True,
+            decoder_ff=True,
+            final_classifier_head=False
         )
     else:
         print('Error!')
