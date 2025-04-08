@@ -7,15 +7,23 @@ if [ "$#" -lt 1 ]; then
 fi
 
 DATASET_NAME=$1  
-
 echo "Running with dataset config: $DATASET_NAME"  
 
 GPU_ID=0
-ARCH='perceiver'
+ARCH='perceiver_io'
 
-for TARGET_ID in {1..12}; do
-    echo "Find backbone for task $TARGET_ID"
-    CUDA_VISIBLE_DEVICES=$GPU_ID LOG_FILE=$LOG_FILE python3 pickaback_cifar100.py --dataset_config $DATASET_NAME \
-                --arch $ARCH \
-                --target_id $TARGET_ID
+for TARGET_ID in {1..6}; do
+
+    if [ $TARGET_ID -le 6 ]; then
+        MODALITY='image'
+    else
+        MODALITY='text'
+    fi
+
+    echo "Find backbone for target task $TARGET_ID"
+    CUDA_VISIBLE_DEVICES=$GPU_ID LOG_FILE=$LOG_FILE python3 pickaback_perceiverIO.py \
+        --dataset_config $DATASET_NAME \
+        --arch $ARCH \
+        --target_id $TARGET_ID \
+        --modality $MODALITY
 done

@@ -76,7 +76,7 @@ parser.add_argument('--lr_mask', type=float, default=1e-4,
                    help='Learning rate for mask')
 parser.add_argument('--lr_mask_decay_every', type=int,
                    help='Step decay every this many epochs')
-parser.add_argument('--batch_size', type=int, default=32,
+parser.add_argument('--batch_size', type=int, default=16,
                    help='input batch size for training')
 parser.add_argument('--val_batch_size', type=int, default=100,
                    help='input batch size for validation')
@@ -278,8 +278,36 @@ def main():
                                     dataset2num_classes=dataset2num_classes,
                                     modality=args.modality)
     elif args.arch == 'perceiver_io':
-        model_class = getattr(models.perceiver_io, "PerceiverIO", None)
-        model = model_class(depth=4, dim=512, queries_dim=512, num_latents=256, latent_dim=512, cross_heads=1, latent_heads=8, cross_dim_head=64, latent_dim_head=64, init_weights=True, datasets=True, weight_tie_layers=False, decoder_ff=True, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
+        image_input_channels=3
+        image_input_axis=2
+        text_input_axis=1
+        text_input_channels=768
+        model = models.__dict__[args.arch](
+            num_freq_bands=6,
+            depth=4,
+            max_freq=10,
+            image_input_channels=image_input_channels,
+            image_input_axis=image_input_axis,
+            text_input_channels=text_input_channels,
+            text_input_axis=text_input_axis,
+            max_text_length=512,
+            queries_dim=512, #
+            dataset_history=dataset_history, 
+            dataset2num_classes=dataset2num_classes, 
+            num_latents=256,
+            latent_dim=512,
+            cross_heads=1,
+            latent_heads=8,
+            cross_dim_head=64,
+            latent_dim_head=64,
+            weight_tie_layers=False,
+            fourier_encode_data=True,
+            decoder_ff=False, 
+            final_classifier_head=True,
+            attn_dropout=0.1,
+            ff_dropout=0.1
+        )
+        model.set_modality(args.modality)
     else:
         print('Error!')
         sys.exit(1)
@@ -394,7 +422,7 @@ def main():
         }
         piggymasks = {}
         task_id = model.datasets.index(args.dataset) + 1
-        if task_id > 1:
+        if task_id > 0:
             for name, module in model.named_modules():
                 if isinstance(module, nl.SharableConv2d) or isinstance(module, nl.SharableLinear):
                     piggymasks[name] = torch.zeros_like(masks[name], dtype=torch.float32)
@@ -412,7 +440,7 @@ def main():
     else:
         piggymasks = shared_layer_info[args.dataset]['piggymask']
         task_id = model.datasets.index(args.dataset) + 1
-        if task_id > 1:
+        if task_id > 0:
             for name, module in model.named_modules():
                 if isinstance(module, nl.SharableConv2d) or isinstance(module, nl.SharableLinear):
                     module.piggymask = piggymasks[name]
@@ -444,9 +472,12 @@ def main():
     masks_to_optimize_via_Adam = []
     named_of_masks_to_optimize_via_Adam = []
 
-    for name, param in model.named_parameters():
-         print(f"[DEBUG] {name}: mean={param.mean().item():.6f}, std={param.std().item():.6f}")
-        
+    # # pruning 시작 전 로그 추가
+    # for name, module in model.named_modules():
+    #     if hasattr(module, "piggymask"):
+    #         print(name, "-> piggymask mean:", module.piggymask.data.mean().item(), 
+    #                         "std:", module.piggymask.data.std().item())
+    
 
     for name, param in named_params.items():
         if 'classifiers' in name:
@@ -475,7 +506,7 @@ def main():
     curr_lrs = []
     for optimizer in optimizers:
         for param_group in optimizer.param_groups:
-            print(f"[DEBUG] LR: {param_group['lr']}")
+            # print(f"[DEBUG] LR: {param_group['lr']}")
             curr_lrs.append(param_group['lr'])
             break
 
@@ -522,6 +553,10 @@ def main():
     for epoch_idx in range(start_epoch, args.epochs):
         avg_train_acc, curr_prune_step = manager.train(optimizers, epoch_idx, curr_lrs, curr_prune_step)
         avg_val_acc = manager.validate(epoch_idx)
+
+        # for name, param in model.named_parameters():
+        #     if param.grad is not None and torch.isnan(param.grad).any():
+        #         print(f"NaN gradient at {name}")
 
         importances = [param.abs().mean().item() for param in model.parameters() if param.requires_grad]
         avg_weight_importance = np.mean(importances)

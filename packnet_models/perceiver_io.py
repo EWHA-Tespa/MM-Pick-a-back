@@ -1,5 +1,6 @@
 from math import pi, log
 from functools import wraps
+import math
 
 import torch
 from torch import nn, einsum
@@ -366,7 +367,15 @@ class perceiver_io(nn.Module):
     
     def _initialize_weights(self):
         for m in self.modules():
-            if isinstance(m, nl.SharableLinear) or isinstance(m, nn.Linear):
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                # nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.xavier_uniform_(m.weight)
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
@@ -378,8 +387,8 @@ class perceiver_io(nn.Module):
             self.dataset2num_classes[dataset] = num_classes
             classifier = nn.Linear(84, num_classes)
             self.classifiers.append(classifier)
-            nn.init.xavier_uniform_(classifier.weight)  # 가중치 초기화
-            nn.init.constant_(classifier.bias, 0)
+            nn.init.normal_(self.classifiers[self.datasets.index(dataset)].weight, 0, 0.01)
+            nn.init.constant_(self.classifiers[self.datasets.index(dataset)].bias, 0)
 
     def set_dataset(self, dataset):
         """활성화할 데이터셋의 분류기를 변경"""

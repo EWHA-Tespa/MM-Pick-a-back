@@ -210,15 +210,19 @@ def main():
                                     dataset2num_classes=dataset2num_classes,
                                     modality=args.modality)
     elif args.arch == 'perceiver_io':
+        image_input_channels=3
+        image_input_axis=2
+        text_input_axis=1
+        text_input_channels=768
         model = packnet_models.__dict__[args.arch](
             num_freq_bands=6,
             depth=4,
             max_freq=10,
             init_weights=True,
-            image_input_channels=3,
-            image_input_axis=2,
-            text_input_channels=768,
-            text_input_axis=1,
+            image_input_channels=image_input_channels,
+            image_input_axis=image_input_axis,
+            text_input_channels=text_input_channels,
+            text_input_axis=text_input_axis,
             max_text_length=512,
             queries_dim=512, 
             dataset_history=dataset_history, 
@@ -234,6 +238,7 @@ def main():
             decoder_ff=True,
             final_classifier_head=False
         )
+        model.set_modality(args.modality)
     else:
         print('Error!')
         sys.exit(0)

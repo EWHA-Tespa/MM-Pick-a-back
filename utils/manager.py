@@ -69,6 +69,9 @@ class Manager(object):
                 # Do forward-backward.
                 output = self.model(data)
 
+                # queries = torch.randn(data.size(0), 1, self.model.latents.size(-1), device=data.device)
+                # output = self.model(data, queries=queries, modality=self.args.modality)
+
                 num = get_batch_size(data)
                 if self.args.dataset != 'face_verification':
                     train_accuracy.update(classification_accuracy(output, target), num)
@@ -131,6 +134,11 @@ class Manager(object):
                         target = target.cuda()
 
                     output = self.model(data)
+
+                    # queries = torch.randn(data.size(0), 1, self.model.latents.size(-1), device=data.device)
+                    # output = self.model(data, queries=queries, modality=self.args.modality)
+
+
                     num = get_batch_size(data)
                     val_loss.update(self.criterion(output, target), num)
                     val_accuracy.update(classification_accuracy(output, target), num)
