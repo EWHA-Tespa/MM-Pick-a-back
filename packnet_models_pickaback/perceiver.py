@@ -150,6 +150,9 @@ class perceiver(nn.Module):
         fourier_encode_data = True,
         self_per_cross_attn = 1,
         final_classifier_head = True,
+        vocab_size=None,
+        embed_dim=None,
+        modality ='image',
     ):
         """The shape of the final attention mechanism will be:
         depth * (cross attention -> self_per_cross_attn * self attention)
@@ -180,6 +183,7 @@ class perceiver(nn.Module):
           final_classifier_head: mean pool and project embeddings to number of classes (num_classes) at the end
         """
         super().__init__()
+        self.modality = modality
         self.input_axis = input_axis
         self.max_freq = max_freq
         self.num_freq_bands = num_freq_bands
@@ -195,11 +199,17 @@ class perceiver(nn.Module):
 
         self.latents = nn.Parameter(torch.randn(num_latents, latent_dim))
 
-        get_cross_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, input_dim, heads = cross_heads, dim_head = cross_dim_head, dropout = attn_dropout), context_dim = input_dim)
+        if self.modality == 'text':
+            input_dim = 768
+        self.input_projection = nn.Linear(input_dim, 512) # 모달리티 간 차원 맞추기 용 projection layer
+
+        self.latents = nn.Parameter(torch.randn(num_latents, latent_dim))
+        
+        get_cross_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, 512, heads = cross_heads, dim_head = cross_dim_head, dropout = attn_dropout), context_dim = 512)
         get_cross_ff = lambda: PreNorm(latent_dim, FeedForward(latent_dim, dropout = ff_dropout))
         get_latent_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, heads = latent_heads, dim_head = latent_dim_head, dropout = attn_dropout))
         get_latent_ff = lambda: PreNorm(latent_dim, FeedForward(latent_dim, dropout = ff_dropout))
-
+        
         get_cross_attn, get_cross_ff, get_latent_attn, get_latent_ff = map(cache_fn, (get_cross_attn, get_cross_ff, get_latent_attn, get_latent_ff))
 
         self.layers = nn.ModuleList([])
@@ -241,33 +251,41 @@ class perceiver(nn.Module):
         mask = None,
         return_embeddings = False
     ):
-        if data.ndim == 4:
-            data = data.permute(0, 2, 3, 1)
+        if self.modality == 'text':
+            # 텍스트 모달리티: 입력 data는 이미 [B, T, embed_dim] 형태라고 가정
+            if isinstance(data, dict):
+                if "input_embeds" in data:
+                    x_flat = data["input_embeds"]
+                else:
+                    raise ValueError("For text modality, expected 'input_embeds' key in input dictionary.")
+            else:
+                x_flat = data # 이미 tokenized되어 평탄한 형태라고 가정
+        else:
+            if data.ndim == 4:
+                data = data.permute(0, 2, 3, 1)
+            b, *axis, _ = data.shape
+            assert len(axis) == self.input_axis, 'input data must have the right number of axis'
+            if self.fourier_encode_data:
+                # calculate fourier encoded positions in the range of [-1, 1], for all axis
 
-        b, *axis, _, device, dtype = *data.shape, data.device, data.dtype
-        assert len(axis) == self.input_axis, 'input data must have the right number of axis'
-
-        if self.fourier_encode_data:
-            # calculate fourier encoded positions in the range of [-1, 1], for all axis
-
-            axis_pos = list(map(lambda size: torch.linspace(-1., 1., steps=size, device=device, dtype=dtype), axis))
-            pos = torch.stack(torch.meshgrid(*axis_pos, indexing = 'ij'), dim = -1)
-            enc_pos = fourier_encode(pos, self.max_freq, self.num_freq_bands)
-            enc_pos = rearrange(enc_pos, '... n d -> ... (n d)')
-            enc_pos = repeat(enc_pos, '... -> b ...', b = b)
-
-            data = torch.cat((data, enc_pos), dim = -1)
+                axis_pos = [torch.linspace(-1., 1., steps=size, device=data.device, dtype=data.dtype) for size in axis]
+                pos = torch.stack(torch.meshgrid(*axis_pos, indexing = 'ij'), dim = -1)
+                enc_pos = fourier_encode(pos, self.max_freq, self.num_freq_bands)
+                enc_pos = rearrange(enc_pos, '... n d -> ... (n d)')
+                enc_pos = repeat(enc_pos, '... -> b ...', b = b)
+                data = torch.cat((data, enc_pos), dim = -1)
+            x_flat = rearrange(data, 'b ... d -> b (...) d')
 
         # concat to channels of data and flatten axis
 
-        data = rearrange(data, 'b ... d -> b (...) d')
-
-        x = repeat(self.latents, 'n d -> b n d', b = b)
+        x_proj = self.input_projection(x_flat)  # [B, num_tokens, 512]
+        b = x_proj.shape[0]
+        x = repeat(self.latents, 'n d -> b n d', b=b)
 
         # layers
 
         for cross_attn, cross_ff, self_attns in self.layers:
-            x = cross_attn(x, context = data, mask = mask) + x
+            x = cross_attn(x, context = x_proj, mask = mask) + x
             x = cross_ff(x) + x
 
             for self_attn, self_ff in self_attns:
@@ -302,7 +320,7 @@ class perceiver(nn.Module):
                 # nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.xavier_uniform_(m.weight)
                 if m.bias is not None:
-                    nn.init.constant(m.bias, 0)
+                    nn.init.constant_(m.bias, 0)
 
     def _reconstruct_classifiers(self):
         for dataset, num_classes in self.dataset2num_classes.items():

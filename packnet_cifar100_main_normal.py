@@ -2,6 +2,7 @@
 import argparse
 import json
 import warnings
+import yaml
 
 import torch
 import torch.nn as nn
@@ -22,7 +23,7 @@ import wandb
 import utils
 from utils import Optimizers
 from utils.packnet_manager import Manager
-import utils.cifar100_dataset as dataset
+import utils.dataset as dataset
 import packnet_models
 
 
@@ -41,31 +42,31 @@ model_urls = {
     'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
     'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
     'mobilenetv2': 'https://download.pytorch.org/models/mobilenet_v2-b0353104.pth',
-    # Weights ported from https://github.com/rwightman/pytorch-image-models/
     "efficientnetb0": "https://download.pytorch.org/models/efficientnet_b0_rwightman-3dd342df.pth",
     "efficientnetb1": "https://download.pytorch.org/models/efficientnet_b1_rwightman-533bc792.pth",
     "efficientnetb2": "https://download.pytorch.org/models/efficientnet_b2_rwightman-bcdf34b7.pth",
     "efficientnetb3": "https://download.pytorch.org/models/efficientnet_b3_rwightman-cf984f9c.pth",
     "efficientnetb4": "https://download.pytorch.org/models/efficientnet_b4_rwightman-7eb33cd5.pth",
-    # Weights ported from https://github.com/lukemelas/EfficientNet-PyTorch/
     "efficientnetb5": "https://download.pytorch.org/models/efficientnet_b5_lukemelas-b6417697.pth",
     "efficientnetb6": "https://download.pytorch.org/models/efficientnet_b6_lukemelas-c76e70fd.pth",
     "efficientnetb7": "https://download.pytorch.org/models/efficientnet_b7_lukemelas-dcc49843.pth",
 }
 
-# To prevent PIL warnings.
+
 warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--arch', type=str, default='vgg16_bn_cifar100',
                    help='Architectures')
+parser.add_argument('--expname', type=str,
+                    help='Weights & Biases experiment name')
+parser.add_argument('--modality', type=str, default='image',
+                    help='Modality of data')
 parser.add_argument('--num_classes', type=int, default=-1,
                    help='Num outputs for dataset')
 
-# Optimization options.
 parser.add_argument('--lr', type=float, default=0.1,
                    help='Learning rate for parameters, used for baselines')
-
 parser.add_argument('--batch_size', type=int, default=32,
                    help='input batch size for training')
 parser.add_argument('--val_batch_size', type=int, default=100,
@@ -74,20 +75,13 @@ parser.add_argument('--workers', type=int, default=24, help='')
 parser.add_argument('--weight_decay', type=float, default=4e-5,
                    help='Weight decay')
 
-# Paths.
-parser.add_argument('--dataset', type=str, default='',
-                   help='Name of dataset')
-parser.add_argument('--train_path', type=str, default='',
-                   help='Location of train data')
-parser.add_argument('--val_path', type=str, default='',
-                   help='Location of test data')
+parser.add_argument('--dataset', type=str, default='', help='Name of dataset')
+parser.add_argument('--dataset_config', type=str, default='n24news', choices=["cifar100", "n24news", "mscoco", "cub", "oxford"],
+                   help='Dataset configuration key defined in dataset_config.yaml')
 
-# Other.
 parser.add_argument('--cuda', action='store_true', default=True,
                    help='use CUDA')
-
 parser.add_argument('--seed', type=int, default=1, help='random seed')
-
 parser.add_argument('--checkpoint_format', type=str,
                     default='./{save_folder}/checkpoint-{epoch}.pth.tar',
                     help='checkpoint file format')
@@ -109,18 +103,31 @@ parser.add_argument('--use_imagenet_pretrained', action='store_true', default=Fa
 parser.add_argument('--jsonfile', type=str, help='file to restore baseline validation accuracy')
 
 
+args = parser.parse_args()
+
+config_path = os.path.join(os.path.dirname(__file__), 'utils/dataset_config.yaml')
+with open(config_path, 'r') as f:
+    dataset_config_yaml = yaml.safe_load(f)
+
+if args.num_classes < 0:
+    args.num_classes = dataset_config_yaml[args.dataset_config]['num_classes']
+
 def main():
+    global args
     """Do stuff."""
-    args = parser.parse_args()
-    
-    run_name = f'{args.dataset}_{args.arch}_finetune'
-    group_name = f'{args.arch}_baseline'
+
+    run_name = f'{args.expname}_{args.dataset}_{args.arch}'
+    group_name = f'{args.expname}_{args.arch}'
+
+    # args.dataset이 비어있지 않을 때만 태그에 포함
+    wandb_tags = [args.dataset] if args.dataset else []
+    wandb_tags.append(args.expname)
 
     wandb.init(project='mm-pick-a-back', 
                name=run_name,
                group=group_name,
                config=vars(args),
-               tags=[args.dataset])
+               tags=wandb_tags)
 
     if args.save_folder and not os.path.isdir(args.save_folder):
         os.makedirs(args.save_folder)
@@ -133,11 +140,10 @@ def main():
     if args.cuda:
         torch.cuda.manual_seed(args.seed)
 
-    #cudnn.benchmark = True
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-    # If set > 0, will resume training from a given checkpoint.
+    # Resume checkpoint if exists.
     resume_from_epoch = 0
     resume_folder = args.load_folder
     for try_epoch in range(200, 0, -1):
@@ -149,8 +155,7 @@ def main():
     if args.restore_epoch:
         resume_from_epoch = args.restore_epoch
 
-    # Set default train and test path if not provided as input.
-    utils.set_dataset_paths(args)
+    # utils.set_dataset_paths(args)
 
     if resume_from_epoch:
         filepath = args.checkpoint_format.format(save_folder=resume_folder, epoch=resume_from_epoch)
@@ -163,9 +168,6 @@ def main():
             shared_layer_info = checkpoint['shared_layer_info']
         else:
             shared_layer_info = {}
-
-        if 'num_for_construct' in checkpoint_keys:
-            num_for_construct = checkpoint['num_for_construct']
     else:
         dataset_history = []
         dataset2num_classes = {}
@@ -205,14 +207,45 @@ def main():
                                     self_per_cross_attn=1,
                                     final_classifier_head=False,
                                     dataset_history=dataset_history,
-                                    dataset2num_classes=dataset2num_classes)
+                                    dataset2num_classes=dataset2num_classes,
+                                    modality=args.modality)
+    elif args.arch == 'perceiver_io':
+        image_input_channels=3
+        image_input_axis=2
+        text_input_axis=1
+        text_input_channels=768
+        model = packnet_models.__dict__[args.arch](
+            num_freq_bands=6,
+            depth=4,
+            max_freq=10,
+            init_weights=True,
+            image_input_channels=image_input_channels,
+            image_input_axis=image_input_axis,
+            text_input_channels=text_input_channels,
+            text_input_axis=text_input_axis,
+            max_text_length=512,
+            queries_dim=512, 
+            dataset_history=dataset_history, 
+            dataset2num_classes=dataset2num_classes, 
+            num_latents=256,
+            latent_dim=512,
+            cross_heads=1,
+            latent_heads=8,
+            cross_dim_head=64,
+            latent_dim_head=64,
+            weight_tie_layers=False,
+            fourier_encode_data=True,
+            decoder_ff=True,
+            final_classifier_head=False
+        )
+        model.set_modality(args.modality)
     else:
         print('Error!')
         sys.exit(0)
 
-    # Add and set the model dataset
-    model.add_dataset(args.dataset, args.num_classes)
-    model.set_dataset(args.dataset)
+    # 서브클래스가 필요한 경우 args.dataset를 사용하고, 그렇지 않으면 args.dataset_config를 사용
+    model.add_dataset(args.dataset if args.dataset else args.dataset_config, args.num_classes)
+    model.set_dataset(args.dataset if args.dataset else args.dataset_config)
     model = model.cuda()
 
     wandb.watch(model, log='all')
@@ -233,7 +266,7 @@ def main():
             if args.dataset == 'imagenet':
                 curr_model_state_dict['classifiers.0.weight'].copy_(state_dict['classifier.6.weight'])
                 curr_model_state_dict['classifiers.0.bias'].copy_(state_dict['classifier.6.bias'])
-        elif args.arch == 'vgg16_bn_cifar100': ##### Jinee #####
+        elif args.arch == 'vgg16_bn_cifar100':
             state_dict = model_zoo.load_url(model_urls['vgg16_bn'])
             for name, param in state_dict.items():
                 if 'classifier' not in name and 'bias' not in name:
@@ -245,19 +278,19 @@ def main():
             state_dict = model_zoo.load_url(model_urls['resnet50'])
             for ([name, param], [name2, param2]) in zip(state_dict.items(), curr_model_state_dict.items()):
                 if 'fc' not in name:
-                    curr_model_state_dict[name].copy_(param) ##### Jinee ##### ['module.' + name].copy_(param)
+                    curr_model_state_dict[name].copy_(param)
             if args.dataset == 'imagenet':
                 curr_model_state_dict['module.classifiers.0.weight'].copy_(state_dict['fc.weight'])
                 curr_model_state_dict['module.classifiers.0.bias'].copy_(state_dict['fc.bias'])
         elif 'mobilenetv2' in args.arch:
             state_dict = model_zoo.load_url(model_urls['mobilenetv2'])
-            for ([name, param], [name2, param2]) in zip(state_dict.items(), curr_model_state_dict.items()):                
-                if 'classifier' not in name and 'bias' not in name:               
+            for ([name, param], [name2, param2]) in zip(state_dict.items(), curr_model_state_dict.items()):
+                if 'classifier' not in name and 'bias' not in name:
                     curr_model_state_dict[name2].copy_(param)
         elif 'efficientnet' in args.arch:
             state_dict = model_zoo.load_url(model_urls[args.arch])
-            for ([name, param], [name2, param2]) in zip(state_dict.items(), curr_model_state_dict.items()):                
-                if 'classifier' not in name and 'bias' not in name:               
+            for ([name, param], [name2, param2]) in zip(state_dict.items(), curr_model_state_dict.items()):
+                if 'classifier' not in name and 'bias' not in name:
                     curr_model_state_dict[name2].copy_(param)
         else:
             print("Currently, we didn't define the mapping of {} between imagenet pretrained weight and our model".format(args.arch))
@@ -283,10 +316,9 @@ def main():
             'fc_bias': {}
         }
 
-    train_loader = dataset.train_loader(args.dataset, args.batch_size)
-    val_loader = dataset.val_loader(args.dataset, args.val_batch_size)
+    train_loader = dataset.train_loader(args.dataset_config, args.batch_size, dataset_name=args.dataset)
+    val_loader = dataset.val_loader(args.dataset_config, args.val_batch_size, dataset_name=args.dataset)
 
-    # if we are going to save checkpoint in other folder, then we recalculate the starting epoch
     if args.save_folder != args.load_folder:
         start_epoch = 0
     else:
@@ -300,16 +332,14 @@ def main():
         return
 
     lr = args.lr
-    # update all layers
     named_params = dict(model.named_parameters())
     params_to_optimize_via_SGD = []
     named_params_to_optimize_via_SGD = []
-    masks_to_optimize_via_SGD = []
-    named_masks_to_optimize_via_SGD = []
-
+    dataset_name = args.dataset if args.dataset else args.dataset_config
+    
     for tuple_ in named_params.items():
         if 'classifiers' in tuple_[0]:
-            if '.{}.'.format(model.datasets.index(args.dataset)) in tuple_[0]: ##### Jinee ##### if '.{}.'.format(model.module.datasets.index(args.dataset)) in tuple_[0]:
+            if '.{}.'.format(model.datasets.index(dataset_name)) in tuple_[0]:
                 params_to_optimize_via_SGD.append(tuple_[1])
                 named_params_to_optimize_via_SGD.append(tuple_)
             continue
@@ -317,9 +347,6 @@ def main():
             params_to_optimize_via_SGD.append(tuple_[1])
             named_params_to_optimize_via_SGD.append(tuple_)
 
-    # here we must set weight decay to 0.0,
-    # because the weight decay strategy in build-in step() function will change every weight elem in the tensor,
-    # which will hurt previous tasks' accuracy. (Instead, we do weight decay ourself in the `prune.py`)
     optimizer_network = optim.SGD(params_to_optimize_via_SGD, lr=lr,
                           weight_decay=0.0, momentum=0.9, nesterov=True)
 
@@ -328,7 +355,6 @@ def main():
 
     manager.load_checkpoint(optimizers, resume_from_epoch, resume_folder)
 
-    """Performs training."""
     curr_lrs = []
     for optimizer in optimizers:
         for param_group in optimizer.param_groups:
@@ -380,7 +406,6 @@ def main():
                     param_group['lr'] *= 0.1
                 curr_lrs[0] = param_group['lr']
 
-
     if args.save_folder is not None:
         pass
     else:
@@ -400,9 +425,7 @@ def main():
 
         if avg_train_acc < 0.97:
             print('Cannot prune any more!')
-
     elif args.mode == 'prune':
-        #if avg_train_acc > 0.97 and (avg_val_acc - baseline_acc) >= -0.01:
         if avg_train_acc > 0.97:
             manager.save_checkpoint(optimizers, epoch_idx, args.save_folder)
         else:
