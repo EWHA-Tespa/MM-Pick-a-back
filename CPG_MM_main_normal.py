@@ -196,12 +196,13 @@ def main():
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-    resume_from_epoch = 0
+    # resume_from_epoch = 0
+    resume_from_epoch = 20
     resume_folder = args.load_folder
-    for try_epoch in range(1000, 0, -1):
-        if os.path.exists(args.checkpoint_format.format(save_folder=resume_folder, epoch=try_epoch)):
-            resume_from_epoch = try_epoch
-            break
+    # for try_epoch in range(1000, 0, -1):
+    #     if os.path.exists(args.checkpoint_format.format(save_folder=resume_folder, epoch=try_epoch)):
+    #         resume_from_epoch = try_epoch
+    #         break
 
     if args.restore_epoch:
         resume_from_epoch = args.restore_epoch
@@ -211,6 +212,15 @@ def main():
     if resume_from_epoch:
         filepath = args.checkpoint_format.format(save_folder=resume_folder, epoch=resume_from_epoch)
         checkpoint = torch.load(filepath)
+        
+        print("디바이스 위치 찾기: ")
+        masks = checkpoint['masks']
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        for key in masks:
+            masks[key] = masks[key].to(device)
+        # for name, mask in masks.items():
+        #     print(f"{name} mask device: {mask.device}")
+
         checkpoint_keys = checkpoint.keys()
         dataset_history = checkpoint['dataset_history']
         dataset2num_classes = checkpoint['dataset2num_classes']
@@ -352,13 +362,21 @@ def main():
     else:
         NEED_ADJUST_MASK = False
         for name, module in model.named_modules():
-            if isinstance(module, nl.SharableConv2d):
-                if masks[name].size(1) < module.weight.data.size(1):
-                    assert args.mode == 'finetune'
-                    NEED_ADJUST_MASK = True
-                elif masks[name].size(1) > module.weight.data.size(1):
-                    assert args.mode == 'inference'
-                    NEED_ADJUST_MASK = True
+            if isinstance(module, nl.SharableConv2d)  or isinstance(module, nl.SharableLinear):
+                if name not in masks:
+                    # 새로 추가된 모듈이므로, 기본 mask를 생성하여 추가
+                    mask = torch.ByteTensor(module.weight.data.size()).fill_(0)
+                    if 'cuda' in module.weight.data.type():
+                        mask = mask.cuda()
+                    # mask = torch.zeros_like(module.weight.data, dtype=torch.uint8)
+                    masks[name] = mask
+                else:
+                    if masks[name].size(1) < module.weight.data.size(1):
+                        assert args.mode == 'finetune'
+                        NEED_ADJUST_MASK = True
+                    elif masks[name].size(1) > module.weight.data.size(1):
+                        assert args.mode == 'inference'
+                        NEED_ADJUST_MASK = True
         if NEED_ADJUST_MASK:
             if args.mode == 'finetune':
                 for name, module in model.named_modules():
@@ -403,7 +421,13 @@ def main():
         if task_id > 1:
             for name, module in model.named_modules():
                 if isinstance(module, nl.SharableConv2d) or isinstance(module, nl.SharableLinear):
-                    piggymasks[name] = torch.zeros_like(masks[name], dtype=torch.float32)
+                    if name in masks:
+                        base_mask = masks[name].to(module.weight.device)
+                    else:
+                        # base_mask = torch.zeros_like(module.weight.data)
+                        base_mask = torch.zeros_like(module.weight.data, dtype=torch.uint8)
+                    # piggymasks[name] = torch.zeros_like(masks[name], dtype=torch.float32)
+                    piggymasks[name] = torch.zeros_like(base_mask, dtype=torch.float32)
                     piggymasks[name].fill_(0.01)
                     piggymasks[name] = Parameter(piggymasks[name])
                     module.piggymask = piggymasks[name]
@@ -411,7 +435,13 @@ def main():
         piggymasks = {}
         for name, module in model.named_modules():
             if isinstance(module, nl.SharableConv2d) or isinstance(module, nl.SharableLinear):
-                piggymasks[name] = torch.zeros_like(masks[name], dtype=torch.float32)
+                if name in masks:
+                    base_mask = masks[name].to(module.weight.device)
+                else:
+                    # base_mask = torch.zeros_like(module.weight.data)
+                    base_mask = torch.zeros_like(module.weight.data, dtype=torch.uint8)
+                # piggymasks[name] = torch.zeros_like(masks[name], dtype=torch.float32)
+                piggymasks[name] = torch.zeros_like(base_mask, dtype=torch.float32)
                 piggymasks[name].fill_(0.01)
                 piggymasks[name] = Parameter(piggymasks[name])
                 module.piggymask = piggymasks[name]

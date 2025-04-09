@@ -165,7 +165,7 @@ oxford:
   train_path: /data_library/oxford_102_flowers/image/train
   test_path: /data_library/oxford_102_flowers/image/test
   subfolder: true
-  num_classes: 6
+  num_classes: 12
   resize: [64, 64]
   random_horizontal_flip: true
   mean: [0.485, 0.456, 0.406]

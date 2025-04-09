@@ -124,6 +124,7 @@ def train_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_
         train_transform = get_transforms(cfg, dataset_name=dataset_name, is_train=True)
         train_dataset = datasets.ImageFolder(train_path, transform=train_transform)
     
+    print(f"[DEBUG] {train_path}")
     return torch.utils.data.DataLoader(
         train_dataset,
         batch_size=batch_size,
