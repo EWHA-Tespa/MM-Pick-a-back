@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
+import torch.multiprocessing as mp
 import torch.utils.model_zoo as model_zoo
 from torch.nn.parameter import Parameter
 
@@ -58,6 +59,10 @@ warnings.filterwarnings("ignore")
 parser = argparse.ArgumentParser()
 parser.add_argument('--arch', type=str, default='vgg16_bn_cifar100',
                    help='Architectures')
+parser.add_argument('--expname', type=str,
+                    help='Weights & Biases experiment name')
+parser.add_argument('--modality', type=str, default='image',
+                    help='Modality of data')
 parser.add_argument('--num_classes', type=int, default=-1,
                    help='Num outputs for dataset')
 
@@ -112,11 +117,12 @@ def main():
     global args
     """Do stuff."""
 
-    run_name = f'{args.dataset}_{args.arch}_finetune'
-    group_name = f'{args.arch}_baseline'
+    run_name = f'{args.expname}_{args.dataset}_{args.arch}'
+    group_name = f'{args.expname}_{args.arch}'
 
     # args.dataset이 비어있지 않을 때만 태그에 포함
     wandb_tags = [args.dataset] if args.dataset else []
+    wandb_tags.append(args.expname)
 
     wandb.init(project='mm-pick-a-back', 
                name=run_name,
@@ -183,31 +189,48 @@ def main():
     elif args.arch == 'resnet50':
         model = packnet_models.__dict__[args.arch](dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
     elif args.arch == 'perceiver':
+        image_input_channels=3
+        image_input_axis=2
+        text_input_channels=768
+        text_input_axis=1
         model = packnet_models.__dict__[args.arch](
-                                    input_channels=3,
-                                    input_axis=2,
-                                    num_freq_bands=6,
-                                    depth=4,
-                                    max_freq=10,
-                                    num_latents=256,
-                                    latent_dim=512,
-                                    cross_heads=1,
-                                    latent_heads=8,
-                                    cross_dim_head=64,
-                                    latent_dim_head=64,
-                                    attn_dropout=0.,
-                                    ff_dropout=0.,
-                                    weight_tie_layers=False,
-                                    fourier_encode_data=True,
-                                    self_per_cross_attn=1,
-                                    final_classifier_head=False,
-                                    dataset_history=dataset_history,
-                                    dataset2num_classes=dataset2num_classes)
+                                        num_freq_bands=6,
+                                        depth=5,
+                                        max_freq=10,
+                                        image_input_channels=image_input_channels,
+                                        image_input_axis=image_input_axis,
+                                        text_input_channels=text_input_channels,
+                                        text_input_axis=text_input_axis,
+                                        num_latents=256,
+                                        latent_dim=512,
+                                        cross_heads=1,
+                                        latent_heads=8,
+                                        cross_dim_head=64,
+                                        latent_dim_head=64,
+                                        attn_dropout=0.,
+                                        ff_dropout=0.,
+                                        weight_tie_layers=False,
+                                        fourier_encode_data=True,
+                                        self_per_cross_attn=1,
+                                        final_classifier_head=False,
+                                        dataset_history=dataset_history,
+                                        dataset2num_classes=dataset2num_classes)
+        model.set_modality(args.modality)
     elif args.arch == 'perceiver_io':
-        perceiver_class = packnet_models.perceiver_io.PerceiverIO  
-        model = perceiver_class(
+        image_input_channels=3
+        image_input_axis=2
+        text_input_axis=1
+        text_input_channels=768
+        model = packnet_models.__dict__[args.arch](
+            num_freq_bands=6,
             depth=4,
-            dim=512, 
+            max_freq=10,
+            init_weights=True,
+            image_input_channels=image_input_channels,
+            image_input_axis=image_input_axis,
+            text_input_channels=text_input_channels,
+            text_input_axis=text_input_axis,
+            max_text_length=512,
             queries_dim=512, 
             dataset_history=dataset_history, 
             dataset2num_classes=dataset2num_classes, 
@@ -218,8 +241,11 @@ def main():
             cross_dim_head=64,
             latent_dim_head=64,
             weight_tie_layers=False,
-            decoder_ff=True
+            fourier_encode_data=True,
+            decoder_ff=True,
+            final_classifier_head=False
         )
+        model.set_modality(args.modality)
     else:
         print('Error!')
         sys.exit(0)
@@ -416,4 +442,5 @@ def main():
     print('-' * 16)
 
 if __name__ == '__main__':
+    mp.set_start_method("spawn", force=True)
     main()

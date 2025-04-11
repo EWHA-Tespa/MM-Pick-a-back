@@ -9,6 +9,19 @@ from .packnet_prune import SparsePruner
 from .metrics import fv_evaluate
 from packnet_models import AngleLoss
 
+def move_to_cuda(data):
+    if hasattr(data, 'keys'):
+        return {k: move_to_cuda(v) for k, v in data.items()}
+    else:
+        return data.cuda()
+
+def get_batch_size(data):
+    if isinstance(data, dict):
+        # 딕셔너리 내부의 첫번째 텐서의 0번 차원이 배치 크기임
+        return next(iter(data.values())).size(0)
+    else:
+        return data.size(0)
+
 
 class Manager(object):
     """Handles training and pruning."""
@@ -46,13 +59,14 @@ class Manager(object):
                   ascii=True) as t:
             for batch_idx, (data, target) in enumerate(self.train_loader):
                 if self.args.cuda:
-                    data, target = data.cuda(), target.cuda()
+                    data = move_to_cuda(data)
+                    target = target.cuda()
 
                 optimizers.zero_grad()
                 # Do forward-backward.
                 output = self.model(data)
 
-                num = data.size(0)
+                num = get_batch_size(data)
                 if self.args.dataset != 'face_verification':
                     train_accuracy.update(classification_accuracy(output, target), num)
 
@@ -90,10 +104,11 @@ class Manager(object):
             with torch.no_grad():
                 for data, target in self.val_loader:
                     if self.args.cuda:
-                        data, target = data.cuda(), target.cuda()
+                        data = move_to_cuda(data)
+                        target = target.cuda()
 
                     output = self.model(data)
-                    num = data.size(0)
+                    num = get_batch_size(data)
                     val_loss.update(self.criterion(output, target), num)
                     val_accuracy.update(classification_accuracy(output, target), num)
 
@@ -117,7 +132,8 @@ class Manager(object):
                       desc='Validate Epoch  #{}: '.format(epoch_idx + 1),
                       ascii=True) as t:
                 for batch_idx, (data_a, data_p, label) in enumerate(self.val_loader):
-                    data_a, data_p = data_a.cuda(), data_p.cuda()
+                    data_a = move_to_cuda(data_a)
+                    data_p = move_to_cuda(data_p)
                     data_a, data_p, label = Variable(data_a, volatile=True), \
                                             Variable(data_p, volatile=True), Variable(label)
                     # ==== compute output ====

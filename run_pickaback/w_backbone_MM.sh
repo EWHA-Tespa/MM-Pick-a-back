@@ -38,12 +38,6 @@ tail -n +2 "$PICKABACK_CSV" | while IFS=',' read -r csv_target_id csv_task_id; d
     task_id=$(echo "$csv_task_id" | tr -d '\r"' | xargs)
 
     echo "Starting training for task_id=$task_id, target_id=$target_id"
-    
-    if [ $target_id -le 6 ]; then
-        MODALITY='image'
-    else
-        MODALITY='text'
-    fi
 
     # 각각 get_dataset_name.py를 호출하여 dataset 이름을 가져옵니다.
     DATASET_TASK=$(python3 get_dataset_name.py $DATASET_CONFIG $task_id)
@@ -54,20 +48,33 @@ tail -n +2 "$PICKABACK_CSV" | while IFS=',' read -r csv_target_id csv_task_id; d
 
     # 네트워크 폭 초기화
     NETWORK_WIDTH_MULTIPLIER=$DEFAULT_NETWORK_WIDTH_MULTIPLIER
+    CKPT_FORMAT="./{save_folder}/checkpoint-20_kv_transfer_$target_id.pth.tar"
 
     state=2
     while [ $state -eq 2 ]; do
-        CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar100_main_normal.py \
+        if [ $task_id -le 6 ]; then
+            MODALITY='image'
+        else
+            MODALITY='text'
+        fi
+
+        if [ $target_id -le 6 ]; then
+            TARGET_MODALITY='image'
+        else
+            TARGET_MODALITY='text'
+        fi
+
+        CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_MM_main_normal.py \
            --arch $ARCH \
            --expname $EXPNAME \
-           --modality $MODALITY \
            --dataset $DATASET_TARGET --num_classes $NUM_CLASSES \
+           --modality $TARGET_MODALITY \
            --checkpoint_format $CKPT_FORMAT \
            --lr $INIT_LR \
            --lr_mask $LR_MASK \
            --weight_decay 4e-5 \
-           --save_folder $checkpoints_name/$version_name/$ARCH/${DATASET_TASK}/${DATASET_TARGET}/scratch \
-           --load_folder $checkpoints_name/$single_version_name/$ARCH/${DATASET_TASK}/gradual_prune \
+           --save_folder $checkpoints_name/$version_name/$ARCH/${DATASET_CONFIG}/${DATASET_TASK}/${DATASET_TARGET}/scratch \
+           --load_folder $checkpoints_name/$single_version_name/$ARCH/${DATASET_CONFIG}/${DATASET_TASK}/gradual_prune \
            --epochs $FINETUNE_EPOCHS \
            --mode finetune \
            --network_width_multiplier $NETWORK_WIDTH_MULTIPLIER \

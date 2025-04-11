@@ -192,6 +192,7 @@ class SharableLinear(nn.Module):
             weight = mask_thresholded * self.weight
         else:
             weight = self.weight
+            print("[DEBUG][SharableLinear] Piggymask is None")
         # Get output using modified weight.
         return F.linear(input, weight, self.bias)
 

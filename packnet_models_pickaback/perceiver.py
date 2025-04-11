@@ -123,9 +123,63 @@ class Attention(nn.Module):
         out = rearrange(out, '(b h) n d -> b n (h d)', h = h)
         return self.to_out(out)
 
+class MultiModalAttention(nn.Module):
+    def __init__(
+        self,
+        query_dim,
+        image_context_dim,
+        text_context_dim,
+        heads = 8,
+        dim_head = 64,
+        dropout = 0.,
+    ):
+        super().__init__()
+        inner_dim = dim_head * heads
+        image_context_dim = default(image_context_dim, query_dim)
+        text_context_dim = default(text_context_dim, query_dim)
+        self.scale = dim_head ** -0.5
+        self.heads = heads
+
+        self.to_q = nn.Linear(query_dim, inner_dim, bias = False)
+        self.to_kv_image = nn.Linear(image_context_dim, inner_dim * 2, bias=False)
+        self.to_kv_text = nn.Linear(text_context_dim, inner_dim * 2, bias=False)
+
+        self.dropout = nn.Dropout(dropout)
+        self.to_out = nn.Linear(inner_dim, query_dim)
+
+    def forward(self, x, context = None, mask = None, modality='image'):
+        h = self.heads
+
+        q = self.to_q(x)
+        context = default(context, x)
+        if modality == 'image':
+            k, v = self.to_kv_image(context).chunk(2, dim = -1)
+        else:
+            k, v = self.to_kv_text(context).chunk(2, dim = -1)
+
+        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> (b h) n d', h = h), (q, k, v))
+
+        sim = einsum('b i d, b j d -> b i j', q, k) * self.scale
+
+        if exists(mask):
+            mask = rearrange(mask, 'b ... -> b (...)')
+            max_neg_value = -torch.finfo(sim.dtype).max
+            mask = repeat(mask, 'b j -> (b h) () j', h = h)
+            sim.masked_fill_(~mask, max_neg_value)
+
+        # attention, what we cannot get enough of
+        attn = sim.softmax(dim = -1)
+        attn = self.dropout(attn)
+
+        out = einsum('b i j, b j d -> b i d', attn, v)
+        out = rearrange(out, '(b h) n d -> b n (h d)', h = h)
+        return self.to_out(out)
+
+
 # main class
 
 class perceiver(nn.Module):
+    
     def __init__(
         self,
         *,
@@ -135,8 +189,11 @@ class perceiver(nn.Module):
         dataset_history,
         dataset2num_classes,
         init_weights=True,
-        input_channels = 3,
-        input_axis = 2,
+        image_input_channels = 3, # 이미지
+        image_input_axis = 2,
+        text_input_channels = 768, # 텍스트
+        text_input_axis = 1,
+        max_text_length=512,
         num_latents = 512,
         latent_dim = 512,
         cross_heads = 1,
@@ -180,22 +237,34 @@ class perceiver(nn.Module):
           final_classifier_head: mean pool and project embeddings to number of classes (num_classes) at the end
         """
         super().__init__()
-        self.input_axis = input_axis
+        self.image_input_axis = image_input_axis
+        self.text_input_axis = text_input_axis
         self.max_freq = max_freq
         self.num_freq_bands = num_freq_bands
 
         self.fourier_encode_data = fourier_encode_data
+        self.current_modality = 'image'
 
         self.datasets = dataset_history
         self.dataset2num_classes = dataset2num_classes
         self.classifiers = []
 
-        fourier_channels = (input_axis * ((num_freq_bands * 2) + 1)) if fourier_encode_data else 0
-        input_dim = fourier_channels + input_channels
+        fourier_channels_image = (image_input_axis * ((num_freq_bands * 2) + 1)) if fourier_encode_data else 0
+        image_input_dim = fourier_channels_image + image_input_channels
+        
+        # fourier_channels_text =  (text_input_axis * ((num_freq_bands * 2) + 1)) if fourier_encode_data else 0
+        # text_input_dim = fourier_channels_text + text_input_channels
+        text_input_dim = text_input_channels
+        self.text_position_embeddings = nn.Embedding(max_text_length, text_input_channels)
 
         self.latents = nn.Parameter(torch.randn(num_latents, latent_dim))
 
-        get_cross_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, input_dim, heads = cross_heads, dim_head = cross_dim_head, dropout = attn_dropout), context_dim = input_dim)
+        get_cross_attn = lambda: PreNorm(latent_dim, MultiModalAttention(query_dim=latent_dim, 
+                                                                        image_context_dim=image_input_dim, 
+                                                                        text_context_dim=text_input_dim,
+                                                                        heads = cross_heads,
+                                                                        dim_head = cross_dim_head,
+                                                                        dropout = attn_dropout), context_dim = None) # 원래는 context_dim=input_dim해서, layernorm해야함. 하지만, 일단 생략함.
         get_cross_ff = lambda: PreNorm(latent_dim, FeedForward(latent_dim, dropout = ff_dropout))
         get_latent_attn = lambda: PreNorm(latent_dim, Attention(latent_dim, heads = latent_heads, dim_head = latent_dim_head, dropout = attn_dropout))
         get_latent_ff = lambda: PreNorm(latent_dim, FeedForward(latent_dim, dropout = ff_dropout))
@@ -239,15 +308,25 @@ class perceiver(nn.Module):
         self,
         data,
         mask = None,
-        return_embeddings = False
+        return_embeddings = False,
+        modality='image',
     ):
-        if data.ndim == 4:
-            data = data.permute(0, 2, 3, 1)
+        if modality is None:
+            modality = self.current_modality
+
+        if modality == 'image':
+            self.input_axis = self.image_input_axis
+            if data.ndim == 4:
+                data = data.permute(0, 2, 3, 1)
+        elif modality == 'text':
+            self.input_axis = self.text_input_axis
+        else:
+            raise ValueError("Unknown modality: choose 'image' or 'text'.")
 
         b, *axis, _, device, dtype = *data.shape, data.device, data.dtype
         assert len(axis) == self.input_axis, 'input data must have the right number of axis'
 
-        if self.fourier_encode_data:
+        if self.fourier_encode_data and modality =='image':
             # calculate fourier encoded positions in the range of [-1, 1], for all axis
 
             axis_pos = list(map(lambda size: torch.linspace(-1., 1., steps=size, device=device, dtype=dtype), axis))
@@ -257,7 +336,12 @@ class perceiver(nn.Module):
             enc_pos = repeat(enc_pos, '... -> b ...', b = b)
 
             data = torch.cat((data, enc_pos), dim = -1)
-
+        else:
+            if modality == 'text':
+                seq_length = data.shape[1]
+                position_ids = torch.arange(0, seq_length, device=device).unsqueeze(0)
+                data = data + self.text_position_embeddings(position_ids)
+        
         # concat to channels of data and flatten axis
 
         data = rearrange(data, 'b ... d -> b (...) d')
@@ -267,7 +351,7 @@ class perceiver(nn.Module):
         # layers
 
         for cross_attn, cross_ff, self_attns in self.layers:
-            x = cross_attn(x, context = data, mask = mask) + x
+            x = cross_attn(x, context = data, mask = mask, modality = modality) + x
             x = cross_ff(x) + x
 
             for self_attn, self_ff in self_attns:
@@ -289,6 +373,18 @@ class perceiver(nn.Module):
             return self.to_logits(x)
         #return self.to_logits(x)
     
+    def set_modality(self, modality='image'):
+        self.current_modality = modality
+        for layer in self.layers:
+            cross_attn_block = layer[0].fn
+            if isinstance(cross_attn_block, MultiModalAttention):
+                if modality == 'image':
+                    cross_attn_block.to_kv_image.requires_grad_(True)
+                    cross_attn_block.to_kv_text.requires_grad_(False)
+                else:
+                    cross_attn_block.to_kv_image.requires_grad_(False)
+                    cross_attn_block.to_kv_text.requires_grad_(True)
+
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

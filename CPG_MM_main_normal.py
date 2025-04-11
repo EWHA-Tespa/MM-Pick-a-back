@@ -76,8 +76,7 @@ parser.add_argument('--lr_mask', type=float, default=1e-4,
                    help='Learning rate for mask')
 parser.add_argument('--lr_mask_decay_every', type=int,
                    help='Step decay every this many epochs')
-parser.add_argument('--batch_size', type=int, default=16,
-parser.add_argument('--batch_size', type=int, default=16,
+parser.add_argument('--batch_size', type=int, default=32,
                    help='input batch size for training')
 parser.add_argument('--val_batch_size', type=int, default=100,
                    help='input batch size for validation')
@@ -197,12 +196,13 @@ def main():
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-    resume_from_epoch = 0
+    # resume_from_epoch = 0
+    resume_from_epoch = 20
     resume_folder = args.load_folder
-    for try_epoch in range(1000, 0, -1):
-        if os.path.exists(args.checkpoint_format.format(save_folder=resume_folder, epoch=try_epoch)):
-            resume_from_epoch = try_epoch
-            break
+    # for try_epoch in range(1000, 0, -1):
+    #     if os.path.exists(args.checkpoint_format.format(save_folder=resume_folder, epoch=try_epoch)):
+    #         resume_from_epoch = try_epoch
+    #         break
 
     if args.restore_epoch:
         resume_from_epoch = args.restore_epoch
@@ -212,6 +212,15 @@ def main():
     if resume_from_epoch:
         filepath = args.checkpoint_format.format(save_folder=resume_folder, epoch=resume_from_epoch)
         checkpoint = torch.load(filepath)
+        
+        print("디바이스 위치 찾기: ")
+        masks = checkpoint['masks']
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        for key in masks:
+            masks[key] = masks[key].to(device)
+        # for name, mask in masks.items():
+        #     print(f"{name} mask device: {mask.device}")
+
         checkpoint_keys = checkpoint.keys()
         dataset_history = checkpoint['dataset_history']
         dataset2num_classes = checkpoint['dataset2num_classes']
@@ -285,36 +294,8 @@ def main():
                                     dataset2num_classes=dataset2num_classes)
         model.set_modality(args.modality)
     elif args.arch == 'perceiver_io':
-        image_input_channels=3
-        image_input_axis=2
-        text_input_axis=1
-        text_input_channels=768
-        model = models.__dict__[args.arch](
-            num_freq_bands=6,
-            depth=4,
-            max_freq=10,
-            image_input_channels=image_input_channels,
-            image_input_axis=image_input_axis,
-            text_input_channels=text_input_channels,
-            text_input_axis=text_input_axis,
-            max_text_length=512,
-            queries_dim=512, #
-            dataset_history=dataset_history, 
-            dataset2num_classes=dataset2num_classes, 
-            num_latents=256,
-            latent_dim=512,
-            cross_heads=1,
-            latent_heads=8,
-            cross_dim_head=64,
-            latent_dim_head=64,
-            weight_tie_layers=False,
-            fourier_encode_data=True,
-            decoder_ff=False, 
-            final_classifier_head=True,
-            attn_dropout=0.1,
-            ff_dropout=0.1
-        )
-        model.set_modality(args.modality)
+        model_class = getattr(models.perceiver_io, "PerceiverIO", None)
+        model = model_class(depth=4, dim=512, queries_dim=512, num_latents=256, latent_dim=512, cross_heads=1, latent_heads=8, cross_dim_head=64, latent_dim_head=64, init_weights=True, datasets=True, weight_tie_layers=False, decoder_ff=True, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
     else:
         print('Error!')
         sys.exit(1)
@@ -381,13 +362,21 @@ def main():
     else:
         NEED_ADJUST_MASK = False
         for name, module in model.named_modules():
-            if isinstance(module, nl.SharableConv2d):
-                if masks[name].size(1) < module.weight.data.size(1):
-                    assert args.mode == 'finetune'
-                    NEED_ADJUST_MASK = True
-                elif masks[name].size(1) > module.weight.data.size(1):
-                    assert args.mode == 'inference'
-                    NEED_ADJUST_MASK = True
+            if isinstance(module, nl.SharableConv2d)  or isinstance(module, nl.SharableLinear):
+                if name not in masks:
+                    # 새로 추가된 모듈이므로, 기본 mask를 생성하여 추가
+                    mask = torch.ByteTensor(module.weight.data.size()).fill_(0)
+                    if 'cuda' in module.weight.data.type():
+                        mask = mask.cuda()
+                    # mask = torch.zeros_like(module.weight.data, dtype=torch.uint8)
+                    masks[name] = mask
+                else:
+                    if masks[name].size(1) < module.weight.data.size(1):
+                        assert args.mode == 'finetune'
+                        NEED_ADJUST_MASK = True
+                    elif masks[name].size(1) > module.weight.data.size(1):
+                        assert args.mode == 'inference'
+                        NEED_ADJUST_MASK = True
         if NEED_ADJUST_MASK:
             if args.mode == 'finetune':
                 for name, module in model.named_modules():
@@ -429,10 +418,16 @@ def main():
         }
         piggymasks = {}
         task_id = model.datasets.index(args.dataset) + 1
-        if task_id > 0:
+        if task_id > 1:
             for name, module in model.named_modules():
                 if isinstance(module, nl.SharableConv2d) or isinstance(module, nl.SharableLinear):
-                    piggymasks[name] = torch.zeros_like(masks[name], dtype=torch.float32)
+                    if name in masks:
+                        base_mask = masks[name].to(module.weight.device)
+                    else:
+                        # base_mask = torch.zeros_like(module.weight.data)
+                        base_mask = torch.zeros_like(module.weight.data, dtype=torch.uint8)
+                    # piggymasks[name] = torch.zeros_like(masks[name], dtype=torch.float32)
+                    piggymasks[name] = torch.zeros_like(base_mask, dtype=torch.float32)
                     piggymasks[name].fill_(0.01)
                     piggymasks[name] = Parameter(piggymasks[name])
                     module.piggymask = piggymasks[name]
@@ -440,14 +435,20 @@ def main():
         piggymasks = {}
         for name, module in model.named_modules():
             if isinstance(module, nl.SharableConv2d) or isinstance(module, nl.SharableLinear):
-                piggymasks[name] = torch.zeros_like(masks[name], dtype=torch.float32)
+                if name in masks:
+                    base_mask = masks[name].to(module.weight.device)
+                else:
+                    # base_mask = torch.zeros_like(module.weight.data)
+                    base_mask = torch.zeros_like(module.weight.data, dtype=torch.uint8)
+                # piggymasks[name] = torch.zeros_like(masks[name], dtype=torch.float32)
+                piggymasks[name] = torch.zeros_like(base_mask, dtype=torch.float32)
                 piggymasks[name].fill_(0.01)
                 piggymasks[name] = Parameter(piggymasks[name])
                 module.piggymask = piggymasks[name]
     else:
         piggymasks = shared_layer_info[args.dataset]['piggymask']
         task_id = model.datasets.index(args.dataset) + 1
-        if task_id > 0:
+        if task_id > 1:
             for name, module in model.named_modules():
                 if isinstance(module, nl.SharableConv2d) or isinstance(module, nl.SharableLinear):
                     module.piggymask = piggymasks[name]
@@ -479,12 +480,9 @@ def main():
     masks_to_optimize_via_Adam = []
     named_of_masks_to_optimize_via_Adam = []
 
-    # # pruning 시작 전 로그 추가
-    # # for name, module in model.named_modules():
-    #     if hasattr(module, "piggymask"):
-    #    #      print(name, "-> piggymask mean:", module.piggymask.data.mean().item(), 
-    #                         "std:", module.piggymask.data.std().item())
-    
+    # for name, param in model.named_parameters():
+    #      print(f"[DEBUG] {name}: mean={param.mean().item():.6f}, std={param.std().item():.6f}")
+        
 
     for name, param in named_params.items():
         if 'classifiers' in name:
@@ -513,7 +511,7 @@ def main():
     curr_lrs = []
     for optimizer in optimizers:
         for param_group in optimizer.param_groups:
-            # print(f"[DEBUG] LR: {param_group['lr']}")
+            print(f"[DEBUG] LR: {param_group['lr']}")
             curr_lrs.append(param_group['lr'])
             break
 
@@ -560,10 +558,6 @@ def main():
     for epoch_idx in range(start_epoch, args.epochs):
         avg_train_acc, curr_prune_step = manager.train(optimizers, epoch_idx, curr_lrs, curr_prune_step)
         avg_val_acc = manager.validate(epoch_idx)
-
-        # for name, param in model.named_parameters():
-        #     if param.grad is not None and torch.isnan(param.grad).any():
-        #         print(f"NaN gradient at {name}")
 
         importances = [param.abs().mean().item() for param in model.parameters() if param.requires_grad]
         avg_weight_importance = np.mean(importances)

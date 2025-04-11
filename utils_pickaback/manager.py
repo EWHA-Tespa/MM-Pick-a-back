@@ -12,7 +12,19 @@ from .metrics import fv_evaluate
 import models.layers as nl
 from models import AngleLoss
 
+def move_to_cuda(data):
+    if hasattr(data, 'keys'):
+        return {k: move_to_cuda(v) for k, v in data.items()}
+    else:
+        return data.cuda()
 
+def get_batch_size(data):
+    if isinstance(data, dict):
+        # 딕셔너리 내부의 첫번째 텐서의 0번 차원이 배치 크기임
+        return next(iter(data.values())).size(0)
+    else:
+        return data.size(0)
+        
 class Manager(object):
     """Handles training and pruning."""
 

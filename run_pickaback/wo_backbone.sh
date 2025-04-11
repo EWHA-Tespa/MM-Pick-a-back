@@ -5,10 +5,13 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: $0 dataset_config"
     exit 1
 fi
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 DATASET_CONFIG=$1
-GPU_ID=1
-ARCH='perceiver'
+GPU_ID=0
+ARCH='perceiver_io'
+EXPNAME='wo_backbone'
+
 FINETUNE_EPOCHS=100
 NUM_CLASSES=-1
 INIT_LR=1e-2
@@ -23,13 +26,21 @@ VERSION_NAME='CPG_single_scratch_woexp'
 CHECKPOINTS_NAME="checkpoints_${ARCH}"
 BASELINE_FILE="logs_${ARCH}/baseline_${DATASET_CONFIG}_acc.txt"
 
-for TASK_ID in {1..6}; do
+for TASK_ID in {1..12}; do
+    if [ $TASK_ID -le 6 ]; then
+        MODALITY='image'
+    else
+        MODALITY='text'
+    fi
+
     DATASET=$(python3 get_dataset_name.py $DATASET_CONFIG $TASK_ID)
     
     state=2
     while [ $state -eq 2 ]; do
         CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar100_main_normal.py \
            --arch $ARCH \
+           --expname $EXPNAME \
+           --modality $MODALITY \
            --dataset_config $DATASET_CONFIG \
            --dataset $DATASET \
            --num_classes $NUM_CLASSES \
@@ -70,11 +81,13 @@ for TASK_ID in {1..6}; do
     if [ $state -ne 5 ]; then
         CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar100_main_normal.py \
             --arch $ARCH \
+            --expname $EXPNAME \
+            --modality $MODALITY \
             --dataset_config $DATASET_CONFIG \
             --dataset $DATASET \
             --num_classes $NUM_CLASSES  \
             --lr $PRUNING_LR \
-            --lr_mask 0.0 \
+            --lr_mask $LR_MASK \
             --weight_decay 4e-5 \
             --save_folder ${CHECKPOINTS_NAME}/${VERSION_NAME}/$ARCH/${DATASET_CONFIG}/${DATASET}/gradual_prune \
             --load_folder ${CHECKPOINTS_NAME}/${VERSION_NAME}/$ARCH/${DATASET_CONFIG}/${DATASET}/scratch \
@@ -103,6 +116,8 @@ for TASK_ID in {1..6}; do
 
             CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar100_main_normal.py \
                 --arch $ARCH \
+                --expname $EXPNAME \
+                --modality $MODALITY \
                 --dataset_config $DATASET_CONFIG \
                 --dataset $DATASET \
                 --num_classes $NUM_CLASSES \
