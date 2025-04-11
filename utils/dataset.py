@@ -96,7 +96,7 @@ class TextDataset(Dataset):
         with torch.no_grad():
             input_embeds = bert_model.embeddings(encoding["input_ids"])
         input_embeds = input_embeds.squeeze(0)
-        #encoding["input_embeds"] = input_embeds
+        # encoding["input_embeds"] = input_embeds
         return input_embeds, label
 
 def train_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_memory=True):

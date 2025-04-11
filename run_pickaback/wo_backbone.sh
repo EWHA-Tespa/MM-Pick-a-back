@@ -9,7 +9,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 DATASET_CONFIG=$1
 GPU_ID=0
-ARCH='perceiver'
+ARCH='perceiver_io'
 EXPNAME='wo_backbone'
 
 FINETUNE_EPOCHS=100
@@ -87,7 +87,7 @@ for TASK_ID in {1..12}; do
             --dataset $DATASET \
             --num_classes $NUM_CLASSES  \
             --lr $PRUNING_LR \
-            --lr_mask 0.0 \
+            --lr_mask $LR_MASK \
             --weight_decay 4e-5 \
             --save_folder ${CHECKPOINTS_NAME}/${VERSION_NAME}/$ARCH/${DATASET_CONFIG}/${DATASET}/gradual_prune \
             --load_folder ${CHECKPOINTS_NAME}/${VERSION_NAME}/$ARCH/${DATASET_CONFIG}/${DATASET}/scratch \
