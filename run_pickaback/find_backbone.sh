@@ -10,7 +10,7 @@ DATASET_NAME=$1
 echo "Running with dataset config: $DATASET_NAME"  
 
 GPU_ID=0
-ARCH='perceiver_io'
+ARCH='perceiver_io_io'
 
 for TARGET_ID in {1..12}; do
     if [ $TASK_ID -le 6 ]; then
