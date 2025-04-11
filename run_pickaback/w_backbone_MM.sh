@@ -68,7 +68,7 @@ tail -n +2 "$PICKABACK_CSV" | while IFS=',' read -r csv_target_id csv_task_id; d
            --arch $ARCH \
            --expname $EXPNAME \
            --dataset $DATASET_TARGET --num_classes $NUM_CLASSES \
-           --modality $MODALITY \
+           --modality $TARGET_MODALITY \
            --checkpoint_format $CKPT_FORMAT \
            --lr $INIT_LR \
            --lr_mask $LR_MASK \
