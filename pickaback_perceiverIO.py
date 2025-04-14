@@ -23,6 +23,10 @@ from einops import rearrange, repeat
 
 from packnet_models_pickaback.perceiver_io import MultiModalAttention
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+
 import yaml
 
 def evaluate_fn_kv(kv_pair, model1, model2):
@@ -73,7 +77,24 @@ def fourier_encode(x, max_freq, num_bands = 4):
 
 def get_kv_from_input(model, data, modality):
     """
-    model: perceiver_io instance
+    model: perceiver_io instancedef save_ddv_heatmap(ddv_values, target_id, metric_type="cos", save_dir="heatmap"):
+    os.makedirs(f"{save_dir}/group{target_id}", exist_ok=True)
+
+    values = np.array(ddv_values)
+    task_ids = [i for i in range(1, len(values) + 2) if i != target_id]  # 제외한 target_id 제외
+
+    # 1D를 2D처럼 보여주기 위해 reshape
+    fig, ax = plt.subplots(figsize=(10, 1))
+    sns.heatmap(values.reshape(1, -1), annot=True, fmt=".5f", xticklabels=task_ids, yticklabels=[f"target:{target_id}"], cmap="viridis", ax=ax)
+
+    ax.set_title(f"DDV-{metric_type.upper()} Heatmap: target {target_id}")
+    ax.set_xlabel("task_id")
+    ax.set_ylabel("")
+
+    filename = f"{save_dir}/group{target_id}/ddv_{metric_type}.png"
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
     data: input tensor (B, C, H, W) or (B, T, D)
     modality: 'image' or 'text'
     returns: list of (k, v) tuples from cross attention block
@@ -502,12 +523,6 @@ for task_id in range(start_index, num_classes_in_config + 1):
         model2.add_dataset(dataset_name_target, num_classes)
     model2.set_dataset(dataset_name_target)
 
-    # for name, module in model.named_modules():
-    #     if isinstance(module, MultiModalAttention):
-    #         print(f"Found MultiModalAttention at: {name}")
-    #         -> Found MultiModalAttention at: cross_attend_blocks.0.fn
-
-
     if not masks:
         for name, module in model.named_modules():
             if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
@@ -607,10 +622,10 @@ for task_id in range(start_index, num_classes_in_config + 1):
         k_all = torch.cat([k1, k2], dim=1)
         v_all = torch.cat([v1, v2], dim=1)
 
-        k_mut, v_mut = mutate_kv(k_all, v_all, epsilon, max_iterations, manager.model, manager2.model)
+        # k_mut, v_mut = mutate_kv(k_all, v_all, epsilon, max_iterations, manager.model, manager2.model)
 
-        outputs1 = new_model1.forward_with_kv(k_mut, v_mut).detach().cpu().numpy()
-        outputs2 = new_model2.forward_with_kv(k_mut, v_mut).detach().cpu().numpy()
+        outputs1 = new_model1.forward_with_kv(k_all, v_all).detach().cpu().numpy()
+        outputs2 = new_model2.forward_with_kv(k_all, v_all).detach().cpu().numpy()
 
 
     initial_outputs1 = copy.deepcopy(outputs1)
@@ -633,9 +648,6 @@ for task_id in range(start_index, num_classes_in_config + 1):
         odist2 = np.mean(spatial.distance.cdist(outs2, initial_outputs2).diagonal())
         return odist1 * odist2 * m1 * m2
 
-    # input_shape = inputs[0].shape
-    # n_inputs = inputs.shape[0]
-    # ndims = np.prod(input_shape)
     inputs1 = data1.cpu().numpy().copy()
     inputs2 = data2.cpu().numpy().copy()
 
@@ -647,54 +659,8 @@ for task_id in range(start_index, num_classes_in_config + 1):
     n_inputs2 = inputs2.shape[0]
     ndims2 = np.prod(input_shape2)    
     
-    # def mutate_inputs(inputs, input_shape, n_inputs, ndims, evaluate_fn, epsilon, max_iterations):
-    #     score = evaluate_fn(inputs)
-    #     for iteration in range(max_iterations):
-    #         torch.cuda.empty_cache()
-    #         mutation_pos = np.random.randint(0, ndims)
-    #         mutation = np.zeros(ndims, dtype=np.float32)
-    #         mutation[mutation_pos] = epsilon
-    #         mutation = np.reshape(mutation, input_shape)
-    #         mutation_batch = np.zeros(inputs.shape, dtype=np.float32)
-    #         mutation_idx = np.random.randint(0, n_inputs)
-    #         mutation_batch[mutation_idx] = mutation
-
-    #         mutate_right = inputs + mutation_batch
-    #         mutate_left  = inputs - mutation_batch
-    #         score_right = evaluate_fn(mutate_right)
-    #         score_left  = evaluate_fn(mutate_left)
-            
-    #         if score_right <= score and score_left <= score:
-    #             continue
-    #         if score_right > score_left:
-    #             inputs = mutate_right
-    #             score = score_right
-    #         else:
-    #             inputs = mutate_left
-    #             score = score_left
-    #     return inputs, score
-
-    # def evaluate_fn1(x):
-    #     tensor_x = torch.from_numpy(x).cuda()
-    #     outs = manager.model(tensor_x).detach().to('cpu').numpy()
-    #     return np.mean(spatial.distance.cdist(outs, outs))
-
-    # def evaluate_fn2(x):
-    #     tensor_x = torch.from_numpy(x).cuda()
-    #     outs = manager2.model(tensor_x).detach().to('cpu').numpy()
-    #     return np.mean(spatial.distance.cdist(outs, outs))
-
-    # mutated1, score1 = mutate_inputs(inputs1, input_shape1, n_inputs1, ndims1, evaluate_fn1, epsilon, max_iterations)
-    # mutated2, score2 = mutate_inputs(inputs2, input_shape2, n_inputs2, ndims2, evaluate_fn2, epsilon, max_iterations)
-    # outputs1 = manager.model(torch.from_numpy(mutated1).cuda()).detach().to('cpu').numpy()
-    # outputs2 = manager2.model(torch.from_numpy(mutated2).cuda()).detach().to('cpu').numpy()
-    # print(outputs1.shape, outputs2.shape)
-    
     combined_outputs = np.concatenate([outputs1, outputs2], axis=0)
     
-    # profiling_inputs = inputs
-    # input_metrics_1, input_metrics_2 = input_metrics(profiling_inputs) # 용도불명. 일단 주석처리리
-
     def compute_ddv_cos(outputs1, outputs2):
         dists = []
         n_pairs = int(len(outputs1) / 2)
@@ -739,6 +705,7 @@ for task_id in range(start_index, num_classes_in_config + 1):
     ddv_euc_distance = compute_sim_cos(ddv1, ddv2)
     print('DDV euc-cos [%d => %d] %.5f' % (task_id, target_id, ddv_euc_distance))
     ddvec_list.append(ddv_euc_distance)
+
     tasks.append(task_id)  
 
     table_rows.append({
@@ -759,6 +726,7 @@ result_csv = f"pickaback_{args.dataset_config}_result.csv"
 table_csv = f"pickback_{args.dataset_config}_table.csv"
 
 write_header = not os.path.exists(result_csv)
+
 with open(result_csv, 'a', newline='') as f:
     writer = csv.DictWriter(f, fieldnames=['target_id', 'task_id'])
     if write_header:
@@ -772,3 +740,45 @@ with open(table_csv, 'a', newline='') as f:
         writer.writeheader()
     for row in table_rows:
         writer.writerow(row)
+
+# 아래는 히트맵 그리는 코드.
+# table_csv_path = f"pickback_{args.dataset_config}_table.csv"
+
+# # CSV 로드
+# df = pd.read_csv(table_csv_path)
+
+# # 12x12 행렬 초기화
+# ddv_euc_matrix = np.full((12, 12), np.nan)
+# ddv_cos_matrix = np.full((12, 12), np.nan)
+
+# # 각 거리 삽입
+# for _, row in df.iterrows():
+#     raw_target = int(row['target_id'])
+#     raw_task = int(row['task_id'])
+    
+#     # 인덱스 보정
+#     target_id = raw_target - 1
+#     task_id = raw_task - 1
+
+#     # 배열 범위 밖이면 무시
+#     if 0 <= target_id < 12 and 0 <= task_id < 12:
+#         ddv_euc_matrix[target_id, task_id] = round(float(row['ddv_euc']), 5)
+#         ddv_cos_matrix[target_id, task_id] = round(float(row['ddv_cos']), 5)
+#     else:
+#         print(f"[무시됨] CSV에 정의된 task_id {raw_task} 또는 target_id {raw_target}가 1~12 범위 밖임")
+
+# def plot_heatmap(matrix, title, filename):
+#     plt.figure(figsize=(10, 8))
+#     sns.heatmap(matrix, annot=True, fmt=".5f", cmap="magma",
+#                 xticklabels=np.arange(1, 13),
+#                 yticklabels=np.arange(1, 13))
+#     plt.title(title)
+#     plt.xlabel("task_id")
+#     plt.ylabel("target_id")
+#     plt.tight_layout()
+#     plt.savefig(filename)
+#     plt.close()
+
+# # 저장
+# plot_heatmap(ddv_euc_matrix, "DDV-EUC Distance Heatmap", "heatmap/ddv_euc_12x12.png")
+# plot_heatmap(ddv_cos_matrix, "DDV-COS Distance Heatmap", "heatmap/ddv_cos_12x12.png")
