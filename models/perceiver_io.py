@@ -1,7 +1,6 @@
 from math import pi, log
 from functools import wraps
 import math
-
 import torch
 from torch import nn, einsum
 import torch.nn.functional as F
@@ -298,8 +297,12 @@ class perceiver_io(nn.Module):
     def forward(self, data, mask=None, queries=None, return_embeddings=False, modality='image'):
         # if data.ndim == 4:
         #     data = data.permute(0, 2, 3, 1)
+        # print(f"[DEBUG] raw input.shape = {tuple(data.shape)}, modality = {modality}")
 
-        modality = self.current_modality if modality is None else modality
+        # modality = self.current_modality if modality is None else modality
+        if modality is not None:
+            modality = self.current_modality
+            
         if modality == 'image':
             self.input_axis = self.image_input_axis
             if data.ndim ==4:

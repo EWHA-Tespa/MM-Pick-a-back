@@ -77,7 +77,6 @@ parser.add_argument('--lr_mask', type=float, default=1e-4,
 parser.add_argument('--lr_mask_decay_every', type=int,
                    help='Step decay every this many epochs')
 parser.add_argument('--batch_size', type=int, default=16,
-parser.add_argument('--batch_size', type=int, default=16,
                    help='input batch size for training')
 parser.add_argument('--val_batch_size', type=int, default=100,
                    help='input batch size for validation')
@@ -315,6 +314,7 @@ def main():
             ff_dropout=0.1
         )
         model.set_modality(args.modality)
+        print(f"[DEBUG] model.current_modality = {model.current_modality}")
     else:
         print('Error!')
         sys.exit(1)
