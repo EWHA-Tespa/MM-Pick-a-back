@@ -71,6 +71,7 @@ if not dataset_config:
 # 데이터셋 설정에서 DATASETS 및 num_classes 추출
 DATASETS = dataset_config["DATASETS"]
 num_classes_in_config = dataset_config["num_classes"] # 왜 num_class가 그룹개수인거지...?
+num_groups = dataset_config["num_groups"]
 
 start_index = 1
 
@@ -119,19 +120,19 @@ ddvec_list = []
 tasks = [] 
 
 # Iterate over the datasets
-for task_id in range(start_index, num_classes_in_config + 1):
+for task_id in range(start_index, num_groups + 1):
 
     if task_id == target_id:
         continue
     
     # target_modality='image'
     # task_modality='image'
-    if target_id <= 6:
+    if target_id <= (num_groups / 2):
         target_modality = 'image'
     else:
         target_modality = 'text'
 
-    if task_id <= 6:
+    if task_id <= (num_groups / 2):
         task_modality = 'image'
     else:
         task_modality = 'text'

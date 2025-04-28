@@ -48,6 +48,7 @@ if not dataset_config:
 # 데이터셋 설정에서 DATASETS 및 num_classes 추출
 DATASETS = dataset_config["DATASETS"]
 num_classes_in_config = dataset_config["num_classes"]
+num_groups = dataset_config["num_groups"]
 
 start_index = 1
 
@@ -96,7 +97,7 @@ ddvec_list = []
 tasks = [] 
 
 # Iterate over the datasets
-for task_id in range(start_index, 6 + 1):
+for task_id in range(start_index, num_groups + 1):
 
     if task_id == target_id:
         continue

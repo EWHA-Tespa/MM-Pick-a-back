@@ -2,7 +2,8 @@ cifar100:
   train_path: /data_library/cifar100/train
   test_path: /data_library/cifar100/test
   subfolder: true 
-  num_classes: 21
+  num_classes: 5
+  num_groups : 21
   crop:
     size: [32, 32]
     padding: 4
@@ -80,7 +81,8 @@ n24news:
   train_path: /data_library/n24news/image/train
   test_path: /data_library/n24news/image/test
   subfolder: true
-  num_classes: 6
+  num_classes: 3
+  num_groups : 6
   resize: [224, 224] # if arch='lenet', [32,32]
   random_horizontal_flip: true
   mean: [0.485, 0.456, 0.406]
@@ -98,7 +100,8 @@ mscoco:
   train_path: /data_library/mscoco/image/train
   test_path: /data_library/mscoco/image/val
   subfolder: true
-  num_classes: 15
+  num_classes: 4
+  num_groups : 15
   resize: [64, 64]
   random_horizontal_flip: true
   mean: [0.485, 0.456, 0.406]
@@ -123,10 +126,11 @@ mscoco:
 
 
 cub:
-  train_path: /data_library/cub_200_2011/image/train
-  test_path: /data_library/cub_200_2011/image/test
+  train_path: /data/youlee/data_library/cub_200_2011/image/train
+  test_path: /data/youlee/data_library/cub_200_2011/image/test
   subfolder: true
-  num_classes: 27
+  num_classes: 5
+  num_groups : 54
   resize: [224, 224]
   random_horizontal_flip: true
   mean: [0.485, 0.456, 0.406]
@@ -160,12 +164,47 @@ cub:
     - group25 # '176.Prairie_Warbler', '177.Prothonotary_Warbler', '180.Wilson_Warbler', '182.Yellow_Warbler', '183.Northern_Waterthrush'
     - group26 # '184.Louisiana_Waterthrush', '185.Bohemian_Waxwing', '186.Cedar_Waxwing', '188.Pileated_Woodpecker', '189.Red_bellied_Woodpecker'
     - group27 # '191.Red_headed_Woodpecker', '192.Downy_Woodpecker', '193.Bewick_Wren', '194.Cactus_Wren', '195.Carolina_Wren'
+    - group28
+    - group29
+    - group30
+    - group31
+    - group32
+    - group33
+    - group34
+    - group35
+    - group36
+    - group37
+    - group38
+    - group39
+    - group40
+    - group41
+    - group42
+    - group43
+    - group44
+    - group45
+    - group46
+    - group47
+    - group48
+    - group49
+    - group50
+    - group51
+    - group52
+    - group53
+    - group54
+
+modality: 
+    default: image
+    text_groups: [group28, group29, group30, group31, group32, group33, group34, group35, group36, group37, group38, group39, group40, group41, group42, group43, group44, group45, group46, group47, group48, group49, group50, group51, group52, group53, group54]
+text_train_path: /data/youlee/data_library/cub_200_2011/caption/train
+text_test_path: /data/youlee/data_library/cub_200_2011/caption/test
+
 
 oxford: 
   train_path: /data_library/oxford_102_flowers/image/train
   test_path: /data_library/oxford_102_flowers/image/test
   subfolder: true
-  num_classes: 4 # 원래 4여야할텐데?
+  num_classes: 4 
+  num_groups : 12
   resize: [64, 64]
   random_horizontal_flip: true
   mean: [0.485, 0.456, 0.406]

@@ -16,8 +16,8 @@ FINETUNE_EPOCHS=100
 seed=2
 EXPNAME='baseline'
 
-for TASK_ID in {8..12}; do  # change according to the number of classes in the dataset
-    if [ $TASK_ID -le 6 ]; then
+for TASK_ID in {1..54}; do  # change according to the number of classes in the dataset
+    if [ $TASK_ID -le 27 ]; then
         MODALITY='image'
     else
         MODALITY='text'
