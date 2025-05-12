@@ -212,7 +212,7 @@ import packnet_models_pickaback as packnet_models
 arch = args.arch
 num_classes = -1
 lr = 0.1
-batch_size = 32
+batch_size = 16
 val_batch_size = 100
 workers = 24
 weight_decay = 4e-5
@@ -503,12 +503,6 @@ for task_id in range(start_index, num_groups + 1):
         model2.add_dataset(dataset_name_target, num_classes)
     model2.set_dataset(dataset_name_target)
 
-    # for name, module in model.named_modules():
-    #     if isinstance(module, MultiModalAttention):
-    #         print(f"Found MultiModalAttention at: {name}")
-    #         -> Found MultiModalAttention at: cross_attend_blocks.0.fn
-
-
     if not masks:
         for name, module in model.named_modules():
             if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
@@ -605,6 +599,7 @@ for task_id in range(start_index, num_groups + 1):
         kv2 = get_kv_from_input(new_model2, data2, task_modality)[0]
         k1, v1 = kv1
         k2, v2 = kv2
+
         k_all = torch.cat([k1, k2], dim=1)
         v_all = torch.cat([v1, v2], dim=1)
 
@@ -634,9 +629,6 @@ for task_id in range(start_index, num_groups + 1):
         odist2 = np.mean(spatial.distance.cdist(outs2, initial_outputs2).diagonal())
         return odist1 * odist2 * m1 * m2
 
-    # input_shape = inputs[0].shape
-    # n_inputs = inputs.shape[0]
-    # ndims = np.prod(input_shape)
     inputs1 = data1.cpu().numpy().copy()
     inputs2 = data2.cpu().numpy().copy()
 
@@ -648,54 +640,8 @@ for task_id in range(start_index, num_groups + 1):
     n_inputs2 = inputs2.shape[0]
     ndims2 = np.prod(input_shape2)    
     
-    # def mutate_inputs(inputs, input_shape, n_inputs, ndims, evaluate_fn, epsilon, max_iterations):
-    #     score = evaluate_fn(inputs)
-    #     for iteration in range(max_iterations):
-    #         torch.cuda.empty_cache()
-    #         mutation_pos = np.random.randint(0, ndims)
-    #         mutation = np.zeros(ndims, dtype=np.float32)
-    #         mutation[mutation_pos] = epsilon
-    #         mutation = np.reshape(mutation, input_shape)
-    #         mutation_batch = np.zeros(inputs.shape, dtype=np.float32)
-    #         mutation_idx = np.random.randint(0, n_inputs)
-    #         mutation_batch[mutation_idx] = mutation
-
-    #         mutate_right = inputs + mutation_batch
-    #         mutate_left  = inputs - mutation_batch
-    #         score_right = evaluate_fn(mutate_right)
-    #         score_left  = evaluate_fn(mutate_left)
-            
-    #         if score_right <= score and score_left <= score:
-    #             continue
-    #         if score_right > score_left:
-    #             inputs = mutate_right
-    #             score = score_right
-    #         else:
-    #             inputs = mutate_left
-    #             score = score_left
-    #     return inputs, score
-
-    # def evaluate_fn1(x):
-    #     tensor_x = torch.from_numpy(x).cuda()
-    #     outs = manager.model(tensor_x).detach().to('cpu').numpy()
-    #     return np.mean(spatial.distance.cdist(outs, outs))
-
-    # def evaluate_fn2(x):
-    #     tensor_x = torch.from_numpy(x).cuda()
-    #     outs = manager2.model(tensor_x).detach().to('cpu').numpy()
-    #     return np.mean(spatial.distance.cdist(outs, outs))
-
-    # mutated1, score1 = mutate_inputs(inputs1, input_shape1, n_inputs1, ndims1, evaluate_fn1, epsilon, max_iterations)
-    # mutated2, score2 = mutate_inputs(inputs2, input_shape2, n_inputs2, ndims2, evaluate_fn2, epsilon, max_iterations)
-    # outputs1 = manager.model(torch.from_numpy(mutated1).cuda()).detach().to('cpu').numpy()
-    # outputs2 = manager2.model(torch.from_numpy(mutated2).cuda()).detach().to('cpu').numpy()
-    # print(outputs1.shape, outputs2.shape)
-    
     combined_outputs = np.concatenate([outputs1, outputs2], axis=0)
     
-    # profiling_inputs = inputs
-    # input_metrics_1, input_metrics_2 = input_metrics(profiling_inputs) # 용도불명. 일단 주석처리리
-
     def compute_ddv_cos(outputs1, outputs2):
         dists = []
         n_pairs = int(len(outputs1) / 2)
@@ -749,7 +695,6 @@ for task_id in range(start_index, num_groups + 1):
         'ddv_euc': ddv_euc_distance
     })
 
-# ddvec_list에서 최대값의 인덱스를 찾고, 그 인덱스를 tasks 리스트에 적용해 실제 task_id를 얻음
 best_idx = np.argmax(ddvec_list)
 best_task = tasks[best_idx]
 

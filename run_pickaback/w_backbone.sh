@@ -12,8 +12,8 @@ NUM_CLASSES=-1
 INIT_LR=1e-2
 PRUNING_LR=1e-3
 
-GPU_ID=0
-ARCH='perceiver'
+GPU_ID=2
+ARCH='perceiver_io'
 EXPNAME='w_backbone'
 
 FINETUNE_EPOCHS=100
@@ -39,7 +39,7 @@ tail -n +2 "$PICKABACK_CSV" | while IFS=',' read -r csv_target_id csv_task_id; d
 
     echo "Starting training for task_id=$task_id, target_id=$target_id"
     
-    if [ $target_id -le 6 ]; then
+    if [ $target_id -le 28 ]; then
         MODALITY='image'
     else
         MODALITY='text'
@@ -54,10 +54,13 @@ tail -n +2 "$PICKABACK_CSV" | while IFS=',' read -r csv_target_id csv_task_id; d
 
     # 네트워크 폭 초기화
     NETWORK_WIDTH_MULTIPLIER=$DEFAULT_NETWORK_WIDTH_MULTIPLIER
+    LOAD_FOLDER=$checkpoints_name/$single_version_name/$ARCH/$DATASET_CONFIG/${DATASET_TASK}/gradual_prune
+    CKPT_FORMAT="${LOAD_FOLDER}/checkpoint-20.pth.tar"
+
 
     state=2
     while [ $state -eq 2 ]; do
-        CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar100_main_normal.py \
+        CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_MM_main_normal.py \
            --arch $ARCH \
            --expname $EXPNAME \
            --modality $MODALITY \

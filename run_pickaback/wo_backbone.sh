@@ -5,10 +5,16 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: $0 dataset_config"
     exit 1
 fi
+export TMPDIR=/data5/tmp_$USER
+mkdir -p $TMPDIR
+
+# wandb도 같은 임시폴더 사용
+export WANDB_DIR=$TMPDIR
+
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 DATASET_CONFIG=$1
-GPU_ID=0
+GPU_ID=7
 ARCH='perceiver_io'
 EXPNAME='wo_backbone'
 
@@ -26,8 +32,8 @@ VERSION_NAME='CPG_single_scratch_woexp'
 CHECKPOINTS_NAME="checkpoints_${ARCH}"
 BASELINE_FILE="logs_${ARCH}/baseline_${DATASET_CONFIG}_acc.txt"
 
-for TASK_ID in 8; do
-    if [ $TASK_ID -le 6 ]; then
+for TASK_ID in {1..56}; do
+    if [ $TASK_ID -le 28 ]; then
         MODALITY='image'
     else
         MODALITY='text'

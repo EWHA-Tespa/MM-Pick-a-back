@@ -108,6 +108,7 @@ def train_loader(config_name, batch_size, dataset_name=None, num_workers=4, pin_
     
     # modality 판단: 만약 현재 dataset_name이 text modality에 해당하면?
     is_text = False
+
     if dataset_name is not None and 'modality' in cfg:
         if dataset_name in cfg['modality'].get('text_groups', []):
             is_text = True

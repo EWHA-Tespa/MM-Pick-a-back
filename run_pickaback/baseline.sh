@@ -8,6 +8,13 @@ if [ "$#" -lt 1 ]; then
     exit 1
 fi
 
+export TMPDIR=/data5/tmp_$USER
+mkdir -p $TMPDIR
+
+# wandb도 같은 임시폴더 사용
+export WANDB_DIR=$TMPDIR
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 DATASET_CONFIG=$1
 
 GPU_ID=0
@@ -16,8 +23,8 @@ FINETUNE_EPOCHS=100
 seed=2
 EXPNAME='baseline'
 
-for TASK_ID in {1..54}; do  # change according to the number of classes in the dataset
-    if [ $TASK_ID -le 27 ]; then
+for TASK_ID in {1..56}; do  # change according to the number of classes in the dataset
+    if [ $TASK_ID -le 28 ]; then
         MODALITY='image'
     else
         MODALITY='text'
@@ -38,3 +45,5 @@ for TASK_ID in {1..54}; do  # change according to the number of classes in the d
         --logfile logs_${ARCH}/baseline_${DATASET_CONFIG}_acc.txt \
         --seed $seed
 done
+echo "Deleting temporary files created by user $(whoami)..."
+find /tmp -user $(whoami) -name "*wandb*" -exec rm -rf {} + 2>/dev/null
