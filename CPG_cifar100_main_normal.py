@@ -479,13 +479,6 @@ def main():
     masks_to_optimize_via_Adam = []
     named_of_masks_to_optimize_via_Adam = []
 
-    # # pruning 시작 전 로그 추가
-    # # for name, module in model.named_modules():
-    #     if hasattr(module, "piggymask"):
-    #    #      print(name, "-> piggymask mean:", module.piggymask.data.mean().item(), 
-    #                         "std:", module.piggymask.data.std().item())
-    
-
     for name, param in named_params.items():
         if 'classifiers' in name:
             if '.{}.'.format(model.datasets.index(args.dataset)) in name:
@@ -513,7 +506,6 @@ def main():
     curr_lrs = []
     for optimizer in optimizers:
         for param_group in optimizer.param_groups:
-            # print(f"[DEBUG] LR: {param_group['lr']}")
             curr_lrs.append(param_group['lr'])
             break
 
@@ -558,12 +550,8 @@ def main():
             stop_lr_mask = False
 
     for epoch_idx in range(start_epoch, args.epochs):
-        avg_train_acc, curr_prune_step = manager.train(optimizers, epoch_idx, curr_lrs, curr_prune_step)
+        avg_train_acc, avg_train_loss, curr_prune_step = manager.train(optimizers, epoch_idx, curr_lrs, curr_prune_step)
         avg_val_acc = manager.validate(epoch_idx)
-
-        # for name, param in model.named_parameters():
-        #     if param.grad is not None and torch.isnan(param.grad).any():
-        #         print(f"NaN gradient at {name}")
 
         importances = [param.abs().mean().item() for param in model.parameters() if param.requires_grad]
         avg_weight_importance = np.mean(importances)
@@ -575,6 +563,7 @@ def main():
         wandb.log({
          "epoch": epoch_idx,
          "train_accuracy": avg_train_acc,
+         "train_loss" : avg_train_loss,
          "val_accuracy": avg_val_acc,
          "avg_weight_importance": avg_weight_importance,
          "total_params": total_params,

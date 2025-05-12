@@ -1,1 +1,1 @@
-python transfer_kv.py --csv_path pickaback_oxford_result.csv
+python transfer_kv_perceiver_io.py --csv_path pickaback_cub_result.csv

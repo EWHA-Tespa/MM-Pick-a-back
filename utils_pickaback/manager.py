@@ -62,6 +62,11 @@ class Manager(object):
         # Set model to training mode
         self.model.train()
 
+        for name, module in self.model.named_modules():
+            if hasattr(module, 'piggymask'):
+                module.piggymask.data = module.piggymask.data.to(module.weight.device)
+
+
         train_loss     = Metric('train_loss')
         train_accuracy = Metric('train_accuracy')
 

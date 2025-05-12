@@ -6,16 +6,22 @@ if [ "$#" -lt 1 ]; then
     exit 1
 fi
 
+export TMPDIR=/data5/tmp_$USER
+mkdir -p $TMPDIR
+
+# wandb도 같은 임시폴더 사용
+export WANDB_DIR=$TMPDIR
+
 DATASET_CONFIG=$1
 
-for TASK_ID in {1..12}; do
+for TASK_ID in {45..56}; do
     # TARGET_TASK_ID=1
 
     # 각 TASK_ID에 맞는 데이터셋 이름을 가져옴
     DATASET=$(python3 get_dataset_name.py $DATASET_CONFIG $TASK_ID)
 
-    GPU_ID=0
-    arch='perceiver'
+    GPU_ID=7
+    arch='perceiver_io'
     FINETUNE_EPOCHS=100
     NUM_CLASSES=-1   
     INIT_LR=1e-2

@@ -100,7 +100,7 @@ parser.add_argument('--threshold', type=float, default=2e-3, help='')
 
 # Paths.
 parser.add_argument('--dataset', type=str, default='', help='Name of dataset (or subfolder for datasets with subfolders)')
-parser.add_argument('--dataset_config', type=str, default='oxford', choices=["cifar100", "n24news", "mscoco", "cub", "oxford"],
+parser.add_argument('--dataset_config', type=str, default='cub', choices=["cifar100", "n24news", "mscoco", "cub", "oxford"],
                    help='Dataset configuration key defined in dataset_config.yaml (e.g., cifar100, n24news)')
 parser.add_argument('--save_prefix', type=str, default='checkpoints/',
                    help='Location to save model')
@@ -207,8 +207,6 @@ def main():
     if args.restore_epoch:
         resume_from_epoch = args.restore_epoch
 
-    # utils.set_dataset_paths(args)
-
     if resume_from_epoch:
         filepath = args.checkpoint_format.format(save_folder=resume_folder, epoch=resume_from_epoch)
         checkpoint = torch.load(filepath)
@@ -294,8 +292,36 @@ def main():
                                     dataset2num_classes=dataset2num_classes)
         model.set_modality(args.modality)
     elif args.arch == 'perceiver_io':
-        model_class = getattr(models.perceiver_io, "PerceiverIO", None)
-        model = model_class(depth=4, dim=512, queries_dim=512, num_latents=256, latent_dim=512, cross_heads=1, latent_heads=8, cross_dim_head=64, latent_dim_head=64, init_weights=True, datasets=True, weight_tie_layers=False, decoder_ff=True, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
+        image_input_channels=3
+        image_input_axis=2
+        text_input_axis=1
+        text_input_channels=768
+        model = models.__dict__[args.arch](
+            num_freq_bands=6,
+            depth=4,
+            max_freq=10,
+            image_input_channels=image_input_channels,
+            image_input_axis=image_input_axis,
+            text_input_channels=text_input_channels,
+            text_input_axis=text_input_axis,
+            max_text_length=512,
+            queries_dim=512, #
+            dataset_history=dataset_history, 
+            dataset2num_classes=dataset2num_classes, 
+            num_latents=256,
+            latent_dim=512,
+            cross_heads=1,
+            latent_heads=8,
+            cross_dim_head=64,
+            latent_dim_head=64,
+            weight_tie_layers=False,
+            fourier_encode_data=True,
+            decoder_ff=False, 
+            final_classifier_head=True,
+            attn_dropout=0.1,
+            ff_dropout=0.1
+        )
+        model.set_modality(args.modality)
     else:
         print('Error!')
         sys.exit(1)
@@ -556,7 +582,7 @@ def main():
             stop_lr_mask = False
 
     for epoch_idx in range(start_epoch, args.epochs):
-        avg_train_acc, curr_prune_step = manager.train(optimizers, epoch_idx, curr_lrs, curr_prune_step)
+        avg_train_acc, avg_train_loss, curr_prune_step = manager.train(optimizers, epoch_idx, curr_lrs, curr_prune_step)
         avg_val_acc = manager.validate(epoch_idx)
 
         importances = [param.abs().mean().item() for param in model.parameters() if param.requires_grad]
@@ -569,6 +595,7 @@ def main():
         wandb.log({
          "epoch": epoch_idx,
          "train_accuracy": avg_train_acc,
+         "train_loss" : avg_train_loss,
          "val_accuracy": avg_val_acc,
          "avg_weight_importance": avg_weight_importance,
          "total_params": total_params,
@@ -672,5 +699,6 @@ def main():
                 must_pruning_ratio_for_curr_task = 1.0 - ratio_allow_for_curr_task
                 if args.initial_sparsity >= must_pruning_ratio_for_curr_task:
                     sys.exit(6)
+
 if __name__ == '__main__':
     main()

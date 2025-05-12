@@ -5,6 +5,12 @@ if [ "$#" -lt 1 ]; then
     echo "Usage: $0 dataset_config"
     exit 1
 fi
+export TMPDIR=/data5/tmp_$USER
+mkdir -p $TMPDIR
+
+# wandb도 같은 임시폴더 사용
+export WANDB_DIR=$TMPDIR
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 DATASET_CONFIG=$1
 
@@ -12,8 +18,8 @@ NUM_CLASSES=-1
 INIT_LR=1e-2
 PRUNING_LR=1e-3
 
-GPU_ID=0
-ARCH='perceiver'
+GPU_ID=7
+ARCH='perceiver_io'
 EXPNAME='w_backbone'
 
 FINETUNE_EPOCHS=100
@@ -52,7 +58,7 @@ tail -n +2 "$PICKABACK_CSV" | while IFS=',' read -r csv_target_id csv_task_id; d
 
     state=2
     while [ $state -eq 2 ]; do
-        if [ $task_id -le 6 ]; then
+        if [ $task_id -le 28 ]; then
             MODALITY='image'
         else
             MODALITY='text'

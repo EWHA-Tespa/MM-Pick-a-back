@@ -53,6 +53,10 @@ class Manager(object):
         # Set model to training mode
         self.model.train()
 
+        for name, module in self.model.named_modules():
+            if hasattr(module, 'piggymask'):
+                module.piggymask.data = module.piggymask.data.to(module.weight.device)
+
         train_loss     = Metric('train_loss')
         train_accuracy = Metric('train_accuracy')
 
@@ -114,7 +118,7 @@ class Manager(object):
         if self.args.log_path:
             logging.info(('In train()-> Train Ep. #{} '.format(epoch_idx + 1)
                          + ', '.join(['{}: {}'.format(k, v) for k, v in summary.items()])))
-        return train_accuracy.avg.item(), curr_prune_step
+        return train_accuracy.avg.item(), train_loss.avg.item(), curr_prune_step
 
     #{{{ Evaluate classification
     def validate(self, epoch_idx, biases=None):
