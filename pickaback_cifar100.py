@@ -21,7 +21,7 @@ from torch.nn.parameter import Parameter
 import yaml
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--arch', type=str, default='lenet5', choices=['lenet5', 'perceiver'])
+parser.add_argument('--arch', type=str, default='lenet5', choices=['lenet5', 'perceiver','perceiver_io'])
 parser.add_argument('--dataset', type=str, default='', help='Name of dataset (or subfolder for datasets with subfolders)')
 parser.add_argument('--dataset_config', type=str, default='n24news', choices=["cifar100", "n24news", "mscoco", "cub", "oxford"],
                    help='Dataset configuration key defined in dataset_config.yaml (e.g., cifar100, n24news)')
@@ -102,6 +102,11 @@ for task_id in range(start_index, num_groups + 1):
     if task_id == target_id:
         continue
     
+    if target_id <= (num_groups / 2):
+        target_modality = 'image'
+    else:
+        target_modality = 'text'
+
     dataset_name = DATASETS[task_id]
     dataset_name_target = DATASETS[target_id]
     dataset_name_test = DATASETS[task_id]
@@ -276,9 +281,60 @@ for task_id in range(start_index, num_groups + 1):
                                     final_classifier_head=False,
                                     dataset_history=dataset_history2, dataset2num_classes=dataset2num_classes2)
     elif arch == 'perceiver_io':
-        perceiverIO_class = packnet_models.perceiver_io.PerceiverIO  
-        model = perceiverIO_class(depth=4, dim=512, queries_dim=512, num_latents=256, latent_dim=512, cross_heads=1, latent_heads=8, cross_dim_head=64, latent_dim_head=64, weight_tie_layers=False, decoder_ff=True, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
-        model2 = perceiverIO_class(depth=4, dim=512, queries_dim=512, num_latents=256, latent_dim=512, cross_heads=1, latent_heads=8, cross_dim_head=64, latent_dim_head=64, weight_tie_layers=False, decoder_ff=True, dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
+        image_input_channels=3
+        image_input_axis=2
+        text_input_axis=1
+        text_input_channels=768
+        model = packnet_models.__dict__[args.arch](
+            num_freq_bands=6,
+            depth=4,
+            max_freq=10,
+            init_weights=True,
+            image_input_channels=image_input_channels,
+            image_input_axis=image_input_axis,
+            text_input_channels=text_input_channels,
+            text_input_axis=text_input_axis,
+            max_text_length=512,
+            queries_dim=512, 
+            dataset_history=dataset_history2, 
+            dataset2num_classes=dataset2num_classes2, 
+            num_latents=256,
+            latent_dim=512,
+            cross_heads=1,
+            latent_heads=8,
+            cross_dim_head=64,
+            latent_dim_head=64,
+            weight_tie_layers=False,
+            fourier_encode_data=True,
+            decoder_ff=False,
+            final_classifier_head=False
+        )
+        model2 = packnet_models.__dict__[args.arch](
+            num_freq_bands=6,
+            depth=4,
+            max_freq=10,
+            init_weights=True,
+            image_input_channels=image_input_channels,
+            image_input_axis=image_input_axis,
+            text_input_channels=text_input_channels,
+            text_input_axis=text_input_axis,
+            max_text_length=512,
+            queries_dim=512, 
+            dataset_history=dataset_history, 
+            dataset2num_classes=dataset2num_classes, 
+            num_latents=256,
+            latent_dim=512,
+            cross_heads=1,
+            latent_heads=8,
+            cross_dim_head=64,
+            latent_dim_head=64,
+            weight_tie_layers=False,
+            fourier_encode_data=True,
+            decoder_ff=False,
+            final_classifier_head=False
+        )
+        model.set_modality(target_modality)
+        model2.set_modality(target_modality)
     else:
         print('Error!')
         sys.exit(0)
@@ -330,11 +386,16 @@ for task_id in range(start_index, num_groups + 1):
     model = model.cuda()
     model2 = model2.cuda()
 
-    train_loader = train_loader_fn(args.dataset_config, batch_size, sub_dataset=dataset_name)
-    val_loader = val_loader_fn(args.dataset_config, val_batch_size, sub_dataset=dataset_name_test)
-    train_loader2 = train_loader_fn(args.dataset_config, batch_size, sub_dataset=dataset_name_target)
-    val_loader2 = val_loader_fn(args.dataset_config, val_batch_size, sub_dataset=dataset_name_test_target)
+    train_loader = train_loader_fn(args.dataset_config, batch_size, dataset_name)
+    val_loader = val_loader_fn(args.dataset_config, val_batch_size, dataset_name_test)
+    train_loader2 = train_loader_fn(args.dataset_config, batch_size, dataset_name_target)
+    val_loader2 = val_loader_fn(args.dataset_config, val_batch_size, dataset_name_test_target)
 
+    # train_loader = train_loader_fn(args.dataset_config, batch_size, sub_dataset=dataset_name)
+    # val_loader = val_loader_fn(args.dataset_config, val_batch_size, sub_dataset=dataset_name_test)
+    # train_loader2 = train_loader_fn(args.dataset_config, batch_size, sub_dataset=dataset_name_target)
+    # val_loader2 = val_loader_fn(args.dataset_config, val_batch_size, sub_dataset=dataset_name_test_target)
+   
     if save_folder != load_folder:
         start_epoch = 0
     else:
