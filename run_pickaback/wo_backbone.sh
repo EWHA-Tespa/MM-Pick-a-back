@@ -14,7 +14,7 @@ export WANDB_DIR=$TMPDIR
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 DATASET_CONFIG=$1
-GPU_ID=7
+GPU_ID=0
 ARCH='perceiver_io'
 EXPNAME='wo_backbone'
 
@@ -32,8 +32,8 @@ VERSION_NAME='CPG_single_scratch_woexp'
 CHECKPOINTS_NAME="checkpoints_${ARCH}"
 BASELINE_FILE="logs_${ARCH}/baseline_${DATASET_CONFIG}_acc.txt"
 
-for TASK_ID in {1..56}; do
-    if [ $TASK_ID -le 28 ]; then
+for TASK_ID in 7 8; do
+    if [ $TASK_ID -le 6 ]; then
         MODALITY='image'
     else
         MODALITY='text'

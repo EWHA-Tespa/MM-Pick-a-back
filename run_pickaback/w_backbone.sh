@@ -12,7 +12,7 @@ NUM_CLASSES=-1
 INIT_LR=1e-2
 PRUNING_LR=1e-3
 
-GPU_ID=2
+GPU_ID=0
 ARCH='perceiver_io'
 EXPNAME='w_backbone'
 
@@ -60,7 +60,7 @@ tail -n +2 "$PICKABACK_CSV" | while IFS=',' read -r csv_target_id csv_task_id; d
 
     state=2
     while [ $state -eq 2 ]; do
-        CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_MM_main_normal.py \
+        CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar100_main_normal.py \
            --arch $ARCH \
            --expname $EXPNAME \
            --modality $MODALITY \

@@ -26,6 +26,7 @@ parser.add_argument('--dataset', type=str, default='', help='Name of dataset (or
 parser.add_argument('--dataset_config', type=str, default='n24news', choices=["cifar100", "n24news", "mscoco", "cub", "oxford"],
                    help='Dataset configuration key defined in dataset_config.yaml (e.g., cifar100, n24news)')
 parser.add_argument('--target_id', type=int, default=1)
+
 args = parser.parse_args()
 
 print(f"Architecture: {args.arch}")
@@ -99,13 +100,14 @@ tasks = []
 start_index = 1 if (target_id <= num_groups // 2) else (num_groups // 2 + 1)
 end_index = (num_groups // 2) if (target_id <= num_groups // 2) else num_groups
 print(f"start_index:{start_index}, end_index:{end_index}")
+
 # Iterate over the datasets
-for task_id in range(start_index, num_groups + 1):
+for task_id in range(start_index, end_index + 1):
 
     if task_id == target_id:
         continue
     
-    if target_id <= (num_groups / 2):
+    if target_id <= 6:
         target_modality = 'image'
     else:
         target_modality = 'text'
@@ -398,7 +400,7 @@ for task_id in range(start_index, num_groups + 1):
     # val_loader = val_loader_fn(args.dataset_config, val_batch_size, sub_dataset=dataset_name_test)
     # train_loader2 = train_loader_fn(args.dataset_config, batch_size, sub_dataset=dataset_name_target)
     # val_loader2 = val_loader_fn(args.dataset_config, val_batch_size, sub_dataset=dataset_name_test_target)
-   
+    
     if save_folder != load_folder:
         start_epoch = 0
     else:
@@ -435,30 +437,33 @@ for task_id in range(start_index, num_groups + 1):
     manager2.model.eval()
 
     with torch.no_grad():
+        # manager.model.set_modality('text')
+        # print('text_input_axis :', manager.model.text_input_axis)   # 1
+        # print('input_axis      :', manager.model.input_axis)   
         data1, target1 = next(iter(manager.val_loader))
         data2, target2 = next(iter(manager2.val_loader))
         if manager.cuda:
             data1, target1 = data1.cuda(), target1.cuda()
             data2, target2 = data2.cuda(), target2.cuda()
             inputs = np.concatenate([data1.cpu(), data2.cpu()])
-            outputs1 = manager.model(torch.Tensor(inputs).cuda()).to('cpu').tolist()
-            outputs2 = manager2.model(torch.Tensor(inputs).cuda()).to('cpu').tolist()
+            outputs1 = manager.model(torch.Tensor(inputs).cuda(), modality=target_modality).to('cpu').tolist()
+            outputs2 = manager2.model(torch.Tensor(inputs).cuda(), modality=target_modality).to('cpu').tolist()
 
     initial_outputs1 = copy.deepcopy(outputs1)
     initial_outputs2 = copy.deepcopy(outputs2)
 
     def input_metrics(x_inputs):
         with torch.no_grad():
-            outs1 = manager.model(torch.Tensor(x_inputs).cuda()).to('cpu').tolist()
-            outs2 = manager2.model(torch.Tensor(x_inputs).cuda()).to('cpu').tolist()
+            outs1 = manager.model(torch.Tensor(x_inputs).cuda(), modality=target_modality).to('cpu').tolist()
+            outs2 = manager2.model(torch.Tensor(x_inputs).cuda(), modality=target_modality).to('cpu').tolist()
         dist1 = spatial.distance.cdist(outs1, outs1)
         dist2 = spatial.distance.cdist(outs2, outs2)
         return np.mean(dist1), np.mean(dist2)
 
     def evaluate_inputs(x_inputs):
         with torch.no_grad():
-            outs1 = manager.model(torch.Tensor(x_inputs).cuda()).to('cpu').tolist()
-            outs2 = manager2.model(torch.Tensor(x_inputs).cuda()).to('cpu').tolist()
+            outs1 = manager.model(torch.Tensor(x_inputs).cuda(), modality=target_modality).to('cpu').tolist()
+            outs2 = manager2.model(torch.Tensor(x_inputs).cuda(), modality=target_modality).to('cpu').tolist()
         m1, m2 = input_metrics(x_inputs)
         odist1 = np.mean(spatial.distance.cdist(outs1, initial_outputs1).diagonal())
         odist2 = np.mean(spatial.distance.cdist(outs2, initial_outputs2).diagonal())
@@ -499,7 +504,7 @@ for task_id in range(start_index, num_groups + 1):
     def compute_ddv_cos(x_inputs):
         with torch.no_grad():
             dists = []
-            outs = manager.model(torch.Tensor(x_inputs).cuda()).to('cpu').tolist()
+            outs = manager.model(torch.Tensor(x_inputs).cuda(), modality=target_modality).to('cpu').tolist()
             n_pairs = int(len(x_inputs) / 2)
             for i in range(n_pairs):
                 ya = outs[i]
@@ -507,7 +512,7 @@ for task_id in range(start_index, num_groups + 1):
                 dist = spatial.distance.cosine(ya, yb)
                 dists.append(dist)
             dists2 = []
-            outs2 = manager2.model(torch.Tensor(x_inputs).cuda()).to('cpu').tolist()
+            outs2 = manager2.model(torch.Tensor(x_inputs).cuda(), modality=target_modality).to('cpu').tolist()
             for i in range(n_pairs):
                 ya = outs2[i]
                 yb = outs2[i + n_pairs]
@@ -518,7 +523,7 @@ for task_id in range(start_index, num_groups + 1):
     def compute_ddv_euc(x_inputs):
         with torch.no_grad():
             dists = []
-            outs = manager.model(torch.Tensor(x_inputs).cuda()).to('cpu').tolist()
+            outs = manager.model(torch.Tensor(x_inputs).cuda(), modality=target_modality).to('cpu').tolist()
             n_pairs = int(len(x_inputs) / 2)
             for i in range(n_pairs):
                 ya = outs[i]
@@ -526,7 +531,7 @@ for task_id in range(start_index, num_groups + 1):
                 dist = spatial.distance.euclidean(ya, yb)
                 dists.append(dist)
             dists2 = []
-            outs2 = manager2.model(torch.Tensor(x_inputs).cuda()).to('cpu').tolist()
+            outs2 = manager2.model(torch.Tensor(x_inputs).cuda(), modality=target_modality).to('cpu').tolist()
             for i in range(n_pairs):
                 ya = outs2[i]
                 yb = outs2[i + n_pairs]

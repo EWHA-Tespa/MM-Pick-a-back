@@ -244,8 +244,14 @@ ddvcc_list = []
 ddvec_list = []
 tasks = [] 
 
+start_index = 1 if not (target_id <= num_groups // 2) else (num_groups // 2 + 1)
+end_index = (num_groups // 2) if not (target_id <= num_groups // 2) else num_groups
+print(f"start_index:{start_index}, end_index:{end_index}")
+
+# start_index = 1
+# end_index=12
 # Iterate over the datasets
-for task_id in range(start_index, num_groups + 1):
+for task_id in range(start_index, end_index + 1):
 
     if task_id == target_id:
         continue

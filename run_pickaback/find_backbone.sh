@@ -19,7 +19,7 @@ echo "Running with dataset config: $DATASET_NAME"
 GPU_ID=0
 ARCH='perceiver_io'
 
-for TARGET_ID in {1..12}; do
+for TARGET_ID in {7..12}; do
     if [ $TARGET_ID -le 6 ]; then
         MODALITY='image'
     else

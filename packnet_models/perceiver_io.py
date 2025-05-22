@@ -285,10 +285,10 @@ class perceiver_io(nn.Module):
             self._reconstruct_classifiers()
         
 
-    def forward(self, data, mask=None, queries=None, return_embeddings=False, modality='image'):
+    def forward(self, data, mask=None, queries=None, return_embeddings=False, modality=None):
         # if data.ndim == 4:
         #     data = data.permute(0, 2, 3, 1)
-        if modality is not None:
+        if modality is None:
             modality = self.current_modality
 
         if modality == 'image':
