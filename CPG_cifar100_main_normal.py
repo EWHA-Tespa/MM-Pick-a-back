@@ -100,7 +100,7 @@ parser.add_argument('--threshold', type=float, default=2e-3, help='')
 
 # Paths.
 parser.add_argument('--dataset', type=str, default='', help='Name of dataset (or subfolder for datasets with subfolders)')
-parser.add_argument('--dataset_config', type=str, default='oxford', choices=["cifar100", "n24news", "mscoco", "cub", "oxford"],
+parser.add_argument('--dataset_config', type=str, default='cub', choices=["cifar100", "n24news", "mscoco", "cub", "oxford"],
                    help='Dataset configuration key defined in dataset_config.yaml (e.g., cifar100, n24news)')
 parser.add_argument('--save_prefix', type=str, default='checkpoints/',
                    help='Location to save model')

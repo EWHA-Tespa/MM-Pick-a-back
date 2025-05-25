@@ -21,7 +21,7 @@ from torch.nn.parameter import Parameter
 import yaml
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--arch', type=str, default='lenet5', choices=['lenet5', 'perceiver','perceiver_io'])
+parser.add_argument('--arch', type=str, default='lenet5', choices=['lenet5', 'perceiver', 'perceiver_io'])
 parser.add_argument('--dataset', type=str, default='', help='Name of dataset (or subfolder for datasets with subfolders)')
 parser.add_argument('--dataset_config', type=str, default='n24news', choices=["cifar100", "n24news", "mscoco", "cub", "oxford"],
                    help='Dataset configuration key defined in dataset_config.yaml (e.g., cifar100, n24news)')

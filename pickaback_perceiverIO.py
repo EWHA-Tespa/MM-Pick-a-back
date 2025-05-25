@@ -245,7 +245,7 @@ ddvec_list = []
 tasks = [] 
 
 # Iterate over the datasets
-for task_id in range(start_index, num_groups + 1):
+for task_id in range(29, 57):
 
     if task_id == target_id:
         continue
@@ -272,7 +272,7 @@ for task_id in range(start_index, num_groups + 1):
     load_folder2 = 'checkpoints_' + arch + '/baseline_scratch/' + arch + '/' + dataset_name_target
     epochs = 100
     mode = 'inference'
-    logfile = 'logs' + arch + '/baseline_oxford_acc_temp.txt'
+    logfile = 'logs' + arch + '/baseline_cub_sm-img_acc_temp.txt'
 
     if save_folder and not os.path.isdir(save_folder):
         os.makedirs(save_folder)
@@ -701,8 +701,8 @@ best_task = tasks[best_idx]
 print('Selected backbone for target ' + str(target_id) +
       ' = (euc) ' + str(best_task))
 
-result_csv = f"pickaback_{args.dataset_config}_result.csv"
-table_csv = f"pickback_{args.dataset_config}_table.csv"
+result_csv = f"pickaback_{args.dataset_config}_sm_result.csv"
+table_csv = f"pickaback_{args.dataset_config}_sm_table.csv"
 
 write_header = not os.path.exists(result_csv)
 with open(result_csv, 'a', newline='') as f:

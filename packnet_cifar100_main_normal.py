@@ -258,7 +258,7 @@ def main():
     wandb.watch(model, log='all')
     
     # For datasets whose image_size is 224 and also the first task
-    if args.use_imagenet_pretrained and model.datasets.index(args.dataset) == 0: ##### Jinee ##### model.module.datasets.index(args.dataset) == 0:
+    if args.use_imagenet_pretrained and model.datasets.index(args.dataset) == 0:
         curr_model_state_dict = model.state_dict()
         if args.arch == 'vgg16_bn':
             state_dict = model_zoo.load_url(model_urls['vgg16_bn'])

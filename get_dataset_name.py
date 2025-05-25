@@ -1,6 +1,7 @@
 import sys, yaml, os
 
 config_path = os.path.join(os.path.dirname(__file__), './utils/dataset_config.yaml')
+
 with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
 
