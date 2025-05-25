@@ -81,7 +81,7 @@ def get_kv_from_input(model, data, modality):
     model.eval()
     device = next(model.parameters()).device
     data = data.to(device)
-
+    
     if modality == 'image':
         if data.ndim == 4:
             data = data.permute(0, 2, 3, 1)  # BCHW -> BHWC
@@ -96,7 +96,6 @@ def get_kv_from_input(model, data, modality):
 
     b, *axis, d = data.shape
     assert len(axis) == input_axis
-
     if model.fourier_encode_data and modality == 'image':
         axis_pos = list(map(lambda size: torch.linspace(-1, 1., steps=size, device=device, dtype=data.dtype), axis))
         pos = torch.stack(torch.meshgrid(*axis_pos, indexing='ij'), dim=-1)
@@ -108,7 +107,6 @@ def get_kv_from_input(model, data, modality):
         seq_length = data.shape[1]
         position_ids = torch.arange(0, seq_length, device=device).unsqueeze(0)
         data = data + model.text_position_embeddings(position_ids)
-
     data = rearrange(data, 'b ... d -> b (...) d')
 
     # select correct projection layer
@@ -245,7 +243,7 @@ ddvec_list = []
 tasks = [] 
 
 # Iterate over the datasets
-for task_id in range(29, 57):
+for task_id in range(1, 29):
 
     if task_id == target_id:
         continue
@@ -701,8 +699,8 @@ best_task = tasks[best_idx]
 print('Selected backbone for target ' + str(target_id) +
       ' = (euc) ' + str(best_task))
 
-result_csv = f"pickaback_{args.dataset_config}_sm_result.csv"
-table_csv = f"pickaback_{args.dataset_config}_sm_table.csv"
+result_csv = f"pickaback_{args.dataset_config}_result.csv"
+table_csv = f"pickaback_{args.dataset_config}_table.csv"
 
 write_header = not os.path.exists(result_csv)
 with open(result_csv, 'a', newline='') as f:

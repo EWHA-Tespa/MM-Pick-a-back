@@ -6,7 +6,6 @@ import os
 
 from models import perceiver_io
 
-## Adjustments required for each dataset
 
 def get_kv_modules(perceiver_model, modality):
     kv_list = []
@@ -21,6 +20,7 @@ def get_kv_modules(perceiver_model, modality):
                     raise ValueError("modality must be 'image' or 'text'")
     return kv_list
 
+
 def set_kv_modules(perceiver_model, new_kv_list, modality):
     idx = 0
     for modulelist in perceiver_model.layers:
@@ -34,21 +34,19 @@ def set_kv_modules(perceiver_model, new_kv_list, modality):
                     raise ValueError("modality must be 'image' or 'text'")
                 idx += 1
 
-def get_modality(group_id):
-    try:
-        gid = int(group_id)
-    except Exception as e:
-        raise ValueError("group id must be an integer") from e
-    return 'image' if gid <= 28 else 'text' 
 
-def load_perceiver_checkpoint(ckpt_path, modality):
-    device = torch.device('cuda:7' if torch.cuda.is_available() else 'cpu')  # 예: 1번 GPU 사용
+def get_modality(group_id):
+    gid = int(group_id)
+    return 'image' if gid <= 28 else 'text'
+
+
+def load_perceiver_checkpoint(ckpt_path, modality, group_id=None):
+    device = torch.device('cuda:7' if torch.cuda.is_available() else 'cpu')
     checkpoint = torch.load(ckpt_path, map_location=device)
-    if 'model_state_dict' in checkpoint:
-        state_dict = checkpoint['model_state_dict']
-    else:
-        state_dict = checkpoint
-        
+    # print("[DEBUG] checkpoint keys:", checkpoint.keys())
+    # print("[DEBUG] shared_layer_info keys:", checkpoint['shared_layer_info'].keys())
+    state_dict = checkpoint['model_state_dict'] if 'model_state_dict' in checkpoint else checkpoint
+
     model = perceiver_io(
         num_freq_bands=6,
         depth=4,
@@ -58,9 +56,9 @@ def load_perceiver_checkpoint(ckpt_path, modality):
         text_input_channels=768,
         text_input_axis=1,
         max_text_length=512,
-        queries_dim=512, #
-        dataset_history=['cub'], 
-        dataset2num_classes={'cub' : 56}, 
+        queries_dim=512,
+        dataset_history=['cub'],
+        dataset2num_classes={'cub': 56},
         num_latents=256,
         latent_dim=512,
         cross_heads=1,
@@ -69,14 +67,36 @@ def load_perceiver_checkpoint(ckpt_path, modality):
         latent_dim_head=64,
         weight_tie_layers=False,
         fourier_encode_data=True,
-        decoder_ff=False, 
+        decoder_ff=False,
         final_classifier_head=True,
         attn_dropout=0.1,
         ff_dropout=0.1
     )
-    
+
+    model.to(device)
+
+    # First restore piggymask before state_dict load
+    if 'shared_layer_info' in checkpoint:
+        group_name = f'group{group_id}'
+        piggymask_dict = checkpoint['shared_layer_info'].get(group_name, {}).get('piggymask', {})
+
+        for name, module in model.named_modules():
+            if name in piggymask_dict:
+                setattr(module, 'piggymask', torch.nn.Parameter(piggymask_dict[name]))
+                print(f"[INFO] Registered piggymask to: {name}")
+
+        if hasattr(model, 'classifiers'):
+            for idx, classifier in enumerate(model.classifiers):
+                name = f'classifiers.{idx}'
+                if name in piggymask_dict:
+                    setattr(classifier, 'piggymask', torch.nn.Parameter(piggymask_dict[name]))
+                    print(f"[INFO] Registered piggymask to classifier: {name}")
+
+    # Now restore state_dict
     curr_model_state_dict = model.state_dict()
     for name, param in state_dict.items():
+        if 'piggymask' in name:
+            continue
         if name in curr_model_state_dict:
             if curr_model_state_dict[name].size() == param.size():
                 curr_model_state_dict[name].copy_(param)
@@ -90,62 +110,41 @@ def load_perceiver_checkpoint(ckpt_path, modality):
                     curr_model_state_dict[name][:param.size(0)].copy_(param)
                 else:
                     curr_model_state_dict[name].copy_(param)
-    else:
-        print(f"[WARNING] {name} is not found in the current model state dict.")
+        else:
+            print(f"[WARNING] {name} is not found in the current model state dict.")
 
-    model.to(device)
     return model
 
+
 def save_perceiver_checkpoint(model, original_ckpt, save_path):
-    """
-    The existing checkpoint metadata is copied as is, and the modified model state_dict is overwritten and saved.
-    """
     new_ckpt = original_ckpt.copy()
     new_ckpt['state_dict'] = model.state_dict()
     torch.save(new_ckpt, save_path)
     print(f"Saved new checkpoint to {save_path}")
 
+
 def main():
-    parser = argparse.ArgumentParser(
-        description="Reads the backbone selection results of the dataset and transfers the target model's key-value (kv) modules to the task model, then saves the model as a checkpoint."
-    )
-    parser.add_argument(
-        '--csv_path',
-        type=str,
-        default='pickaback_cub_result.csv',
-        help="CSV file containing target_id and task_id (the first row should be the header)."
-    )
-    parser.add_argument(
-        '--base_dir',
-        type=str,
-        default='/home/aix22404/MM-Pick-a-back/checkpoints_perceiver_io/CPG_single_scratch_woexp/perceiver_io/cub',
-        help="directory where checkpoints are stored"
-    )
-    parser.add_argument(
-        '--checkpoint_name',
-        type=str,
-        default='checkpoint-20.pth.tar',
-        help="checkpoint to be loaded"
-    )
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--csv_path', type=str, default='pickaback_cub_result.csv')
+    parser.add_argument('--base_dir', type=str, default='/home/aix22404/MM-Pick-a-back/checkpoints_perceiver_io/CPG_single_scratch_woexp/perceiver_io/cub')
+    parser.add_argument('--checkpoint_name', type=str, default='checkpoint-20.pth.tar')
     args = parser.parse_args()
 
     with open(args.csv_path, 'r') as f:
         reader = csv.reader(f)
-        header = next(reader)  
+        next(reader)
         for row in reader:
             if len(row) < 2:
                 continue
-            csv_target_id, csv_task_id = row[0].strip(), row[1].strip()
-            target_id = csv_target_id.strip('"').strip()
-            task_id = csv_task_id.strip('"').strip()
+            target_id, task_id = row[0].strip('"'), row[1].strip('"')
+
             print(f"\n[INFO] Processing transfer: task_id={task_id}, target_id={target_id}")
-            
             task_modality = get_modality(task_id)
             target_modality = get_modality(target_id)
 
             task_ckpt_path = os.path.join(args.base_dir, f'group{task_id}', 'gradual_prune', args.checkpoint_name)
             target_ckpt_path = os.path.join(args.base_dir, f'group{target_id}', 'gradual_prune', args.checkpoint_name)
-            
+
             if not os.path.isfile(task_ckpt_path):
                 print(f"[WARN] Task checkpoint not found: {task_ckpt_path}")
                 continue
@@ -154,9 +153,9 @@ def main():
                 continue
 
             print("[INFO] Loading task model...")
-            task_model = load_perceiver_checkpoint(task_ckpt_path, modality=task_modality)
+            task_model = load_perceiver_checkpoint(task_ckpt_path, task_modality, task_id)
             print("[INFO] Loading target model...")
-            target_model = load_perceiver_checkpoint(target_ckpt_path, modality=target_modality)
+            target_model = load_perceiver_checkpoint(target_ckpt_path, target_modality, target_id)
 
             print(f"[INFO] Transferring kv modules from target ({target_modality}) to task ({task_modality}) model...")
             target_kv_modules = get_kv_modules(target_model, target_modality)
@@ -167,6 +166,6 @@ def main():
             original_ckpt = torch.load(task_ckpt_path, map_location='cpu')
             save_perceiver_checkpoint(task_model, original_ckpt, new_ckpt_path)
 
+
 if __name__ == '__main__':
     main()
-

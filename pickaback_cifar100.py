@@ -100,7 +100,7 @@ start_index = 1 if (target_id <= num_groups // 2) else (num_groups // 2 + 1)
 end_index = (num_groups // 2) if (target_id <= num_groups // 2) else num_groups
 print(f"start_index:{start_index}, end_index:{end_index}")
 # Iterate over the datasets
-for task_id in range(start_index, num_groups + 1):
+for task_id in range(1, num_groups// 2):
 
     if task_id == target_id:
         continue
@@ -336,8 +336,6 @@ for task_id in range(start_index, num_groups + 1):
             decoder_ff=False,
             final_classifier_head=False
         )
-        model.set_modality(target_modality)
-        model2.set_modality(target_modality)
     else:
         print('Error!')
         sys.exit(0)

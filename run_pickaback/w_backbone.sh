@@ -12,7 +12,7 @@ NUM_CLASSES=-1
 INIT_LR=1e-2
 PRUNING_LR=1e-3
 
-GPU_ID=2
+GPU_ID=7
 ARCH='perceiver_io'
 EXPNAME='w_backbone'
 
@@ -29,7 +29,7 @@ version_name='CPG_fromsingle_scratch_woexp_target'
 single_version_name='CPG_single_scratch_woexp'
 baseline_file="logs_${ARCH}/baseline_${DATASET_CONFIG}_acc.txt"
 checkpoints_name="checkpoints_${ARCH}"
-PICKABACK_CSV="pickaback_${DATASET_CONFIG}_result.csv"
+PICKABACK_CSV="pickaback_${DATASET_CONFIG}_sm_result.csv"
 
 # CSV 파일의 첫 행(헤더)을 건너뛰고, 두 번째 행부터 읽습니다.
 tail -n +2 "$PICKABACK_CSV" | while IFS=',' read -r csv_target_id csv_task_id; do
@@ -69,15 +69,15 @@ tail -n +2 "$PICKABACK_CSV" | while IFS=',' read -r csv_target_id csv_task_id; d
            --lr $INIT_LR \
            --lr_mask $LR_MASK \
            --weight_decay 4e-5 \
-           --save_folder $checkpoints_name/$version_name/$ARCH/${DATASET_TASK}/${DATASET_TARGET}/scratch \
+           --save_folder $checkpoints_name/$version_name/$ARCH/${DATASET_TASK}/${DATASET_TARGET}_SM/scratch \
            --load_folder $checkpoints_name/$single_version_name/$ARCH/${DATASET_TASK}/gradual_prune \
            --epochs $FINETUNE_EPOCHS \
            --mode finetune \
            --network_width_multiplier $NETWORK_WIDTH_MULTIPLIER \
            --max_allowed_network_width_multiplier $MAX_NETWORK_WIDTH_MULTIPLIER \
-           --pruning_ratio_to_acc_record_file $checkpoints_name/$version_name/$ARCH/${DATASET_TASK}/${DATASET_TARGET}/gradual_prune/record.txt \
+           --pruning_ratio_to_acc_record_file $checkpoints_name/$version_name/$ARCH/${DATASET_TASK}/${DATASET_TARGET}_SM/gradual_prune/record.txt \
            --jsonfile $baseline_file \
-           --log_path $checkpoints_name/$version_name/$ARCH/${DATASET_TASK}/${DATASET_TARGET}/train.log \
+           --log_path $checkpoints_name/$version_name/$ARCH/${DATASET_TASK}/${DATASET_TARGET}_SM/train.log \
            --total_num_tasks $TOTAL_NUM_TASKS \
            --seed $seed
 

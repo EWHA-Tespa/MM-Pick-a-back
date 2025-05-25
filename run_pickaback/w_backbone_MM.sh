@@ -70,7 +70,7 @@ tail -n +2 "$PICKABACK_CSV" | while IFS=',' read -r csv_target_id csv_task_id; d
             TARGET_MODALITY='text'
         fi
 
-        CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_MM_main_normal.py \
+        CUDA_VISIBLE_DEVICES=$GPU_ID python3 CPG_cifar_main_normal.py \
            --arch $ARCH \
            --expname $EXPNAME \
            --dataset $DATASET_TARGET --num_classes $NUM_CLASSES \

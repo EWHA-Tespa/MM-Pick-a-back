@@ -16,11 +16,11 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 DATASET_NAME=$1  
 echo "Running with dataset config: $DATASET_NAME"  
 
-GPU_ID=0
+GPU_ID=7
 ARCH='perceiver_io'
 
-for TARGET_ID in {1..12}; do
-    if [ $TARGET_ID -le 6 ]; then
+for TARGET_ID in {1..28}; do
+    if [ $TARGET_ID -le 28 ]; then
         MODALITY='image'
     else
         MODALITY='text'
