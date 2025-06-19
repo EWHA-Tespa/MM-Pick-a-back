@@ -1,6 +1,7 @@
 # MM-Pick-a-back
 
 ### 폴더 구조
+```
 .
 ├── data/ 
 ├── checkpoints_perceiver_io/ # 모델 체크포인트 저장되는 위치
@@ -17,6 +18,7 @@
 ├── tools/
 ├── utils/
 └── utils_pickaback/
+```
 
 ---
 
