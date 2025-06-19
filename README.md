@@ -23,12 +23,12 @@
 ---
 
 ## 모듈 실행 방법
-### 레포지토리 clone
+### 🟠 레포지토리 clone
 ```
 https://github.com/EWHA-Tespa/MM-Pick-a-back.git
 cd MM-Pick-a-back
 ```
-### 데이터셋 다운로드 및 전처리
+### 🟠 데이터셋 다운로드 및 전처리
 __CUB-200-2011:__
 ```
 wget https://data.caltech.edu/records/65de6-vp158/files/CUB_200_2011.tgz?download=1 -O CUB_200_2011.tgz # 이미지 다운로드
@@ -52,7 +52,7 @@ kaggle competitions download -c oxford-102-flower-pytorch
 
 전처리 방법: https://github.com/EWHA-Tespa/MM-Pickaback-Data-Preprocess/blob/main/oxford.ipynb 의 raw 파일을 데이터셋 저장 위치에 붙여넣고, 해당 파일을 실행하여 전처리합니다. 
 
-### 실행
+### 🟠 실행
 MM-Pick-a-back 실험 결과는 `run_pickaback/`으로 실행합니다.
 __1. Baseline__
 ```
