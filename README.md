@@ -29,7 +29,7 @@ https://github.com/EWHA-Tespa/MM-Pick-a-back.git
 cd MM-Pick-a-back
 ```
 ### 데이터셋 다운로드 및 전처리
-CUB-200-2011:
+__CUB-200-2011:__
 ```
 wget https://data.caltech.edu/records/65de6-vp158/files/CUB_200_2011.tgz?download=1 -O CUB_200_2011.tgz # 이미지 다운로드
 tar -xvzf CUB_200_2011.tgz # 압축 해제
@@ -37,7 +37,7 @@ tar -xvzf CUB_200_2011.tgz # 압축 해제
 텍스트 데이터 (별도 다운로드): https://drive.google.com/file/d/0B0ywwgffWnLLZW9uVHNjb2JmNlE/view?resourcekey=0-8y2UVmBHAlG26HafWYNoFQ 
 전처리 방법: https://github.com/EWHA-Tespa/MM-Pickaback-Data-Preprocess/blob/main/cub.ipynb 의 raw 파일을 데이터셋 저장 위치에 붙여넣고, 해당 파일을 실행하여 전처리합니다. 
 
-MSCOCO:
+__MSCOCO:__
 ```
 wget http://images.cocodataset.org/zips/train2017.zip # 학습 이미지 다운로드 
 wget http://images.cocodataset.org/annotations/annotations_trainval2017.zip # annotation 다운로드
@@ -46,7 +46,7 @@ unzip annotations_trainval2017.zip # 압축 해제
 ```
 전처리 방법: https://github.com/EWHA-Tespa/MM-Pickaback-Data-Preprocess/blob/main/mscoco/preprocess_0430.ipynb 의 raw 파일을 데이터셋 저장 위치에 붙여넣고, 해당 파일을 실행하여 전처리합니다. 
 
-Oxford-102-flowers:
+__Oxford-102-flowers:__
 kaggle competitions download -c oxford-102-flower-pytorch
 텍스트 데이터 (별도 다운로드): https://drive.google.com/file/d/0B0ywwgffWnLLcms2WWJQRFNSWXM/view?resourcekey=0-Av8zFbeDDvNcF1sSjDR32w
 
