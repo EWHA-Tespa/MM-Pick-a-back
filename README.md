@@ -1,17 +1,38 @@
-# Pick-a-back
+# MM-Pick-a-back
 
-데이터 위치: '/data_library'
+### 폴더 구조
+.
+├── data/ 
+├── checkpoints_perceiver_io/ # 모델 체크포인트 저장되는 위치
+├── logs_perceiver_io/ # baseline.sh 실행 후 log 결과 파일이 저장되는 위치
+├── models/ # CPG 학습에 필요한 모델 버전이 저장되는 위치
+├── packnet_models/ # Packnet 학습에 필요한 모델 버전이 저장되는 위치
+├── packnet_models_pickaback/ # modeldiff 하기 위한 모델이 저장되는 위치
+├── run_pickaback/ # 실험 실행 위한 스크립트 파일들이 저장되는 위치
+├── CPG_cifar100_main_normal.py # 선행 연구의 CPG 위한 파이썬 파일
+├── CPG_MM_main_normal.py # MM-Pick-a-back의 CPG 위한 멀티모달 버전 파이썬 파일
+├── transfer_kv_perceiver_io.py # k/v projection 교환 위한 파이썬 파일
+├── packnet_cifar100_main_noraml.py # Packnet 학습 위한 파이썬 파일
+├── pickaback_perceiverIO.py # perceiver IO 기반 modeldiff 위한 파이썬 파일
+├── tools/
+├── utils/
+└── utils_pickaback/
 
 ---
-JinYi Yoon and HyungJune Lee, 'Pick-a-back: Selective Device-to-Device Knowledge Transfer in Federated Continual Learning,' ECCV 2024.
-[\[paper\]](https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/07822.pdf) [\[supplemental\]](https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/07822-supp.pdf) [\[poster\]](https://eccv.ecva.net/media/PosterPDFs/ECCV%202024/2318.png?t=1727379515.5465474) [\[video\]](https://youtu.be/KJjeqd-_7GI) [\[slides\]](https://eccv.ecva.net/media/eccv-2024/Slides/2318_r6uBoFP.pdf)
 
-First of all, we would like to express our sincere gratitude to the open source for their valuable contributions to this research:
-* [ModelDiff: testing-based DNN similarity comparison for model reuse detection](https://github.com/MadryLab/modeldiff)
-* [Compacting, Picking and Growing for Unforgetting Continual Learning](https://github.com/ivclab/CPG)
-* [Piggyback: Adapting a Single Network to Multiple Tasks by Learning to Mask Weights](https://github.com/arunmallya/piggyback)
+### 모듈 실행 방법
+1. 깃 레포지토리를 clone하고 해당 폴더로 이동합니다.
+https://github.com/EWHA-Tespa/MM-Pick-a-back.git
+cd MM-Pick-a-back
+
+### 모델 및 코드 기여
+이 프로젝트는 다음 오픈소스에 기반합니다:
+* [Pick-a-back: Selective Device-to-Device Knowledge Transfer in Federated Continual Learning](https://github.com/jinyi-yoon/Pick-a-back)
+* [Perceiver IO: A General Architecture for Structured Inputs & Outputs](https://github.com/lucidrains/perceiver-pytorch)
 
 ---
+
+
 
 ### Ready for data
 Download the CIFAR-100 dataset in the directory 'data/' and unzip the file. The structure of the dataset is as follows:
