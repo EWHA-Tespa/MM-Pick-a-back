@@ -35,6 +35,7 @@ wget https://data.caltech.edu/records/65de6-vp158/files/CUB_200_2011.tgz?downloa
 tar -xvzf CUB_200_2011.tgz # 압축 해제
 ```
 텍스트 데이터 (별도 다운로드): https://drive.google.com/file/d/0B0ywwgffWnLLZW9uVHNjb2JmNlE/view?resourcekey=0-8y2UVmBHAlG26HafWYNoFQ 
+
 전처리 방법: https://github.com/EWHA-Tespa/MM-Pickaback-Data-Preprocess/blob/main/cub.ipynb 의 raw 파일을 데이터셋 저장 위치에 붙여넣고, 해당 파일을 실행하여 전처리합니다. 
 
 __MSCOCO:__
@@ -44,6 +45,7 @@ wget http://images.cocodataset.org/annotations/annotations_trainval2017.zip # an
 unzip train2017.zip # 압축 해제
 unzip annotations_trainval2017.zip # 압축 해제
 ```
+
 전처리 방법: https://github.com/EWHA-Tespa/MM-Pickaback-Data-Preprocess/blob/main/mscoco/preprocess_0430.ipynb 의 raw 파일을 데이터셋 저장 위치에 붙여넣고, 해당 파일을 실행하여 전처리합니다. 
 
 __Oxford-102-flowers:__
