@@ -51,6 +51,7 @@ unzip annotations_trainval2017.zip # 압축 해제
 __📊 Oxford-102-flowers:__
 
 kaggle competitions download -c oxford-102-flower-pytorch
+
 텍스트 데이터 (별도 다운로드): https://drive.google.com/file/d/0B0ywwgffWnLLcms2WWJQRFNSWXM/view?resourcekey=0-Av8zFbeDDvNcF1sSjDR32w
 
 전처리 방법: https://github.com/EWHA-Tespa/MM-Pickaback-Data-Preprocess/blob/main/oxford.ipynb 의 raw 파일을 데이터셋 저장 위치에 붙여넣고, 해당 파일을 실행하여 전처리합니다. 
