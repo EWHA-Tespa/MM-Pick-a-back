@@ -27,15 +27,6 @@ def get_kv_modules(perceiver_model, modality):
         kv_proj = perceiver_model.cross_attend_blocks[0].fn.to_kv_text
     return kv_proj
 
-# def set_kv_modules(perceiver_model, new_kv, modality):
-#     if modality == 'image':
-#         perceiver_model.cross_attend_blocks[0].fn.to_kv_image = new_kv
-#     elif modality == 'text':
-#         perceiver_model.cross_attend_blocks[0].fn.to_kv_text = new_kv
-#     else:
-#         raise ValueError("modality must be 'image' or 'text'")
-#     return perceiver_model
-
 def set_kv_modules(m, kv_src, modality):
     block = m.cross_attend_blocks[0].fn
     tgt = block.to_kv_image if modality == 'image' else block.to_kv_text
@@ -44,6 +35,13 @@ def set_kv_modules(m, kv_src, modality):
         if tgt.bias is not None:
             tgt.bias.copy_(kv_src.bias)
     return m
+
+def freeze_except_kv(m):
+    for n, p in m.named_parameters():
+        if "to_kv_image" in n or "to_kv_text" in n:
+            p.requires_grad = True     # KV만 학습
+        else:
+            p.requires_grad = False
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--arch', type=str, default='lenet5', choices=['lenet5', 'perceiver_io'])
@@ -223,50 +221,7 @@ for task_id in range(start_index, num_groups + 1):
         masks2 = {}
         shared_layer_info2 = {}
 
-    if arch == 'vgg16_bn_cifar100':
-        model = packnet_models.__dict__[arch](
-            pretrained=False,
-            dataset_history=dataset_history,
-            dataset2num_classes=dataset2num_classes
-        )
-        model2 = packnet_models.__dict__[arch](
-            pretrained=False,
-            dataset_history=dataset_history2,
-            dataset2num_classes=dataset2num_classes2
-        )
-    elif arch == 'lenet5':
-        custom_cfg = [6, 'A', 16, 'A']
-        model = packnet_models.__dict__[arch](custom_cfg,
-                                              dataset_history=dataset_history,
-                                              dataset2num_classes=dataset2num_classes)
-        model2 = packnet_models.__dict__[arch](custom_cfg,
-                                               dataset_history=dataset_history2,
-                                               dataset2num_classes=dataset2num_classes2)
-    elif arch == 'mobilenetv1':
-        model = packnet_models.__dict__[arch]([],
-                                              dataset_history=dataset_history,
-                                              dataset2num_classes=dataset2num_classes)
-        model2 = packnet_models.__dict__[arch]([],
-                                               dataset_history=dataset_history2,
-                                               dataset2num_classes=dataset2num_classes2)
-    elif 'mobilenetv2' in arch:
-        model = packnet_models.__dict__[arch]([],
-                                              dataset_history=dataset_history,
-                                              dataset2num_classes=dataset2num_classes)
-        model2 = packnet_models.__dict__[arch]([],
-                                               dataset_history=dataset_history2,
-                                               dataset2num_classes=dataset2num_classes2)
-    elif 'efficientnet' in arch:
-        model = packnet_models.__dict__[arch]([],
-                                              dataset_history=dataset_history,
-                                              dataset2num_classes=dataset2num_classes)
-        model2 = packnet_models.__dict__[arch]([],
-                                               dataset_history=dataset_history2,
-                                               dataset2num_classes=dataset2num_classes2)
-    elif arch == 'resnet50':
-        model = packnet_models.__dict__[arch](dataset_history=dataset_history, dataset2num_classes=dataset2num_classes)
-        model2 = packnet_models.__dict__[arch](dataset_history=dataset_history2, dataset2num_classes=dataset2num_classes2)
-    elif arch == 'perceiver':
+    if arch == 'perceiver':
         image_input_channels=3
         image_input_axis=2
         text_input_channels=768
@@ -462,36 +417,69 @@ for task_id in range(start_index, num_groups + 1):
     manager2.pruner.apply_mask()
     manager2.model.eval()
 
-    with torch.no_grad():
-        data1, target1 = next(iter(manager.val_loader)) # task 모델
-        data2, target2 = next(iter(manager2.val_loader)) # target모델
-        if manager.cuda:
-            data1, target1 = data1.cuda(), target1.cuda()
-            data2, target2 = data2.cuda(), target2.cuda()
-            # inputs = np.concatenate([data1.cpu(), data2.cpu()])
-            # outputs1 = manager.model(torch.Tensor(inputs).cuda()).to('cpu').tolist()
-            # outputs2 = manager2.model(torch.Tensor(inputs).cuda()).to('cpu').tolist()
+    data1, target1 = next(iter(manager.val_loader)) # task 모델
+    data2, target2 = next(iter(manager2.val_loader)) # target모델
+    if manager.cuda:
+        data1, target1 = data1.cuda(), target1.cuda()
+        data2, target2 = data2.cuda(), target2.cuda()
+        # inputs = np.concatenate([data1.cpu(), data2.cpu()])
+        # outputs1 = manager.model(torch.Tensor(inputs).cuda()).to('cpu').tolist()
+        # outputs2 = manager2.model(torch.Tensor(inputs).cuda()).to('cpu').tolist()
+        with torch.no_grad():
             outputs1_1 = manager.model(data1.cuda()).to('cpu').numpy()
             outputs2_2 = manager2.model(data2.cuda()).to('cpu').numpy()
 
-            ### kv projection layer 바꿔서 나온 output ###
-            
-            NewModel1 = copy.deepcopy(manager.model) # task모델
-            NewModel2 = copy.deepcopy(manager2.model) # target모델
+        ### kv projection layer 바꿔서 나온 output ###
+        
+        NewModel1 = copy.deepcopy(manager.model) # task모델
+        NewModel2 = copy.deepcopy(manager2.model) # target모델
 
-            kv_1 = get_kv_modules(manager.model, modality=task_modality)
-            kv_2 = get_kv_modules(manager2.model, modality=target_modality)
-            
-            set_kv_modules(NewModel1, kv_2, modality=target_modality)
-            set_kv_modules(NewModel2, kv_1,   modality=task_modality)
-            NewModel1.set_modality(target_modality)
-            NewModel2.set_modality(task_modality)
+        kv_1 = get_kv_modules(manager.model, modality=task_modality)
+        kv_2 = get_kv_modules(manager2.model, modality=target_modality)
+        
+        set_kv_modules(NewModel1, kv_2, modality=target_modality)
+        set_kv_modules(NewModel2, kv_1,   modality=task_modality)
+        NewModel1.set_modality(target_modality)
+        NewModel2.set_modality(task_modality)
 
+        freeze_except_kv(NewModel1)
+        freeze_except_kv(NewModel2)
+
+        ## kv projection을 가볍게 해당 모델에 적응시키기. 
+        align_opt1 = torch.optim.AdamW(
+            [p for p in NewModel1.parameters() if p.requires_grad], lr=1e-4)
+        align_opt2 = torch.optim.AdamW(
+            [p for p in NewModel2.parameters() if p.requires_grad], lr=1e-4)
+
+        ALIGN_EPOCHS = 3           # ≈ 2-3 epoch
+        for _ in range(ALIGN_EPOCHS):
+            for x_t, x_s in zip(manager.val_loader, manager2.val_loader):
+                x_t = x_t[0].cuda(non_blocking=True)   # task data
+                x_s = x_s[0].cuda(non_blocking=True)   # target data
+
+                ### NewModel1 (target modality) ###
+                z_orig = manager2.model(x_s).detach()      # 고정모델 출력
+                z_new  = NewModel1(x_s)
+                loss1  = 0.5 * (1 - torch.cosine_similarity(z_new, z_orig, dim=-1).mean())
+
+                align_opt1.zero_grad();  loss1.backward();  align_opt1.step()
+
+                ### NewModel2 (task modality) ###
+                z_orig = manager.model(x_t).detach()
+                z_new  = NewModel2(x_t)
+                loss2  = 0.5 * (1 - torch.cosine_similarity(z_new, z_orig, dim=-1).mean())
+
+                align_opt2.zero_grad();  loss2.backward();  align_opt2.step()
+
+
+        with torch.no_grad():
             outputs1_2 = NewModel1(data2.cuda()).to('cpu').numpy()
             outputs2_1 = NewModel2(data1.cuda()).to('cpu').numpy()
 
             outputs1 = np.concatenate([outputs1_1, outputs1_2], axis=0).tolist()
             outputs2 = np.concatenate([outputs2_1, outputs2_2], axis=0).tolist()
+    else:
+        print("Error on line 482!!")
 
     initial_outputs1 = copy.deepcopy(outputs1)
     initial_outputs2 = copy.deepcopy(outputs2)

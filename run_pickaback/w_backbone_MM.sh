@@ -58,7 +58,7 @@ tail -n +2 "$PICKABACK_CSV" | while IFS=',' read -r csv_target_id csv_task_id; d
 
     state=2
     while [ $state -eq 2 ]; do
-        if [ $task_id -le 28 ]; then
+        if [ $task_id -le 6 ]; then
             MODALITY='image'
         else
             MODALITY='text'
