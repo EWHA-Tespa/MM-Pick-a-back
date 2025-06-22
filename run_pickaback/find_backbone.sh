@@ -26,7 +26,7 @@ for TARGET_ID in 1; do
         MODALITY='text'
     fi
     echo "Find backbone for task $TARGET_ID"
-    CUDA_VISIBLE_DEVICES=$GPU_ID LOG_FILE=$LOG_FILE python3 pickaback_MM_myversion.py --dataset_config $DATASET_NAME \
+    CUDA_VISIBLE_DEVICES=$GPU_ID LOG_FILE=$LOG_FILE python3 pickaback_MM_no_train.py --dataset_config $DATASET_NAME \
                 --arch $ARCH \
                 --target_id $TARGET_ID \
                 # --modality $MODALITY

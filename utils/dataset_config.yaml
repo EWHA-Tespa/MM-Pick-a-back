@@ -126,8 +126,8 @@ mscoco:
 
 
 cub:
-  train_path: /home/aix22404/data_library/CUB_200_2011/image/train
-  test_path: /home/aix22404/data_library/CUB_200_2011/image/test
+  train_path: /home/data_library/CUB_200_2011/image/train
+  test_path: /home/data_library/CUB_200_2011/image/test
   subfolder: true
   num_classes: 5
   num_groups : 56
@@ -197,8 +197,8 @@ cub:
   modality: 
     default: image
     text_groups: [group29, group30, group31, group32, group33, group34, group35, group36, group37, group38, group39, group40, group41, group42, group43, group44, group45, group46, group47, group48, group49, group50, group51, group52, group53, group54, group55, group56]
-  text_train_path: /home/aix22404/data_library/CUB_200_2011/caption/train
-  text_test_path: /home/aix22404/data_library/CUB_200_2011/caption/test
+  text_train_path: /home/data_library/CUB_200_2011/caption/train
+  text_test_path: /home/data_library/CUB_200_2011/caption/test
 
 
 oxford: 

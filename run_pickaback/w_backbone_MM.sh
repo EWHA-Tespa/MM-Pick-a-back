@@ -18,7 +18,7 @@ NUM_CLASSES=-1
 INIT_LR=1e-2
 PRUNING_LR=1e-3
 
-GPU_ID=7
+GPU_ID=0
 ARCH='perceiver_io'
 EXPNAME='w_backbone'
 

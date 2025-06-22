@@ -290,7 +290,7 @@ def main():
         text_input_channels=768
         model = models.__dict__[args.arch](
             num_freq_bands=6,
-            depth=4,
+            depth=3,
             max_freq=10,
             image_input_channels=image_input_channels,
             image_input_axis=image_input_axis,

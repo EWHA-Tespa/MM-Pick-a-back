@@ -223,7 +223,7 @@ def main():
         text_input_channels=768
         model = packnet_models.__dict__[args.arch](
             num_freq_bands=6,
-            depth=4,
+            depth=3,
             max_freq=10,
             init_weights=True,
             image_input_channels=image_input_channels,
@@ -242,7 +242,7 @@ def main():
             latent_dim_head=64,
             weight_tie_layers=False,
             fourier_encode_data=True,
-            decoder_ff=True,
+            decoder_ff=False,
             final_classifier_head=False
         )
         model.set_modality(args.modality)
