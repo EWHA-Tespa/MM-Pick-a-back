@@ -349,6 +349,14 @@ class perceiver_io(nn.Module):
         
     def set_modality(self, modality='image'):
         self.current_modality = modality
+        cross = self.cross_attend_blocks[0].fn
+        if modality == 'image':
+            cross.to_kv_image.requires_grad_(True)
+            cross.to_kv_text.requires_grad_(False)
+        else:
+            cross.to_kv_image.requires_grad_(False)
+            cross.to_kv_text.requires_grad_(True)
+            
         for layer in self.layers:
             cross_attn_block = layer[0].fn
             if isinstance(cross_attn_block, MultiModalAttention):

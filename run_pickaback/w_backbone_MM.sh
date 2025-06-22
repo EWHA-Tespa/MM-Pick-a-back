@@ -18,7 +18,7 @@ NUM_CLASSES=-1
 INIT_LR=1e-2
 PRUNING_LR=1e-3
 
-GPU_ID=7
+GPU_ID=0
 ARCH='perceiver_io'
 EXPNAME='w_backbone'
 
@@ -58,7 +58,7 @@ tail -n +2 "$PICKABACK_CSV" | while IFS=',' read -r csv_target_id csv_task_id; d
 
     state=2
     while [ $state -eq 2 ]; do
-        if [ $task_id -le 28 ]; then
+        if [ $task_id -le 6 ]; then
             MODALITY='image'
         else
             MODALITY='text'

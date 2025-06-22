@@ -100,7 +100,7 @@ parser.add_argument('--threshold', type=float, default=2e-3, help='')
 
 # Paths.
 parser.add_argument('--dataset', type=str, default='', help='Name of dataset (or subfolder for datasets with subfolders)')
-parser.add_argument('--dataset_config', type=str, default='cub', choices=["cifar100", "n24news", "mscoco", "cub", "oxford"],
+parser.add_argument('--dataset_config', type=str, default='oxford', choices=["cifar100", "n24news", "mscoco", "cub", "oxford"],
                    help='Dataset configuration key defined in dataset_config.yaml (e.g., cifar100, n24news)')
 parser.add_argument('--save_prefix', type=str, default='checkpoints/',
                    help='Location to save model')
@@ -209,6 +209,7 @@ def main():
 
     if resume_from_epoch:
         filepath = args.checkpoint_format.format(save_folder=resume_folder, epoch=resume_from_epoch)
+        print("[DEBUG] try load", filepath, os.path.exists(filepath))
         checkpoint = torch.load(filepath)
         
         print("디바이스 위치 찾기: ")
@@ -298,7 +299,7 @@ def main():
         text_input_channels=768
         model = models.__dict__[args.arch](
             num_freq_bands=6,
-            depth=4,
+            depth=3,
             max_freq=10,
             image_input_channels=image_input_channels,
             image_input_axis=image_input_axis,

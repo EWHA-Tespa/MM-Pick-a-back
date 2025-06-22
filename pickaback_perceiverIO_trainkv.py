@@ -247,8 +247,7 @@ tasks = []
 start_index = 1 if not (target_id <= num_groups // 2) else (num_groups // 2 + 1)
 end_index = (num_groups // 2) if not (target_id <= num_groups // 2) else num_groups
 print(f"start_index:{start_index}, end_index:{end_index}")
-start_index=1
-end_index=12
+
 # start_index = 1
 # end_index=12
 # Iterate over the datasets
@@ -610,9 +609,7 @@ for task_id in range(start_index, end_index + 1):
         k_all = torch.cat([k1, k2], dim=1)
         v_all = torch.cat([v1, v2], dim=1)
 
-        k_mut = k_all
-        v_mut = v_all
-        # k_mut, v_mut = mutate_kv(k_all, v_all, epsilon, max_iterations, manager.model, manager2.model)
+        k_mut, v_mut = mutate_kv(k_all, v_all, epsilon, max_iterations, manager.model, manager2.model)
 
         outputs1 = new_model1.forward_with_kv(k_mut, v_mut).detach().cpu().numpy()
         outputs2 = new_model2.forward_with_kv(k_mut, v_mut).detach().cpu().numpy()

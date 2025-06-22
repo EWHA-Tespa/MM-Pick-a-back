@@ -60,8 +60,8 @@ def load_perceiver_checkpoint(ckpt_path, modality):
         text_input_axis=1,
         max_text_length=512,
         queries_dim=512, #
-        dataset_history=['cub'], 
-        dataset2num_classes={'cub' : 56}, 
+        dataset_history=['oxford'], 
+        dataset2num_classes={'oxford' : 12}, 
         num_latents=256,
         latent_dim=512,
         cross_heads=1,
@@ -113,13 +113,13 @@ def main():
     parser.add_argument(
         '--csv_path',
         type=str,
-        default='pickaback_cub_result.csv',
+        default='pickaback_oxford_result.csv',
         help="CSV file containing target_id and task_id (the first row should be the header)."
     )
     parser.add_argument(
         '--base_dir',
         type=str,
-        default='/home/aix22404/MM-Pick-a-back/checkpoints_perceiver_io/CPG_single_scratch_woexp/perceiver_io/cub',
+        default='/home/Minju/MM-Pick-a-back/checkpoints_perceiver_io/CPG_single_scratch_woexp/perceiver_io/oxford',
         help="directory where checkpoints are stored"
     )
     parser.add_argument(
